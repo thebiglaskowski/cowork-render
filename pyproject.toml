@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cowork-render"
+version = "0.1.0"
+description = "Render selected cowork markdown files into HTML companions per opt-in frontmatter signal"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Joe Laskowski" }]
+dependencies = [
+  "python-frontmatter>=1.0",
+]
+
+[project.scripts]
+cowork-render = "cowork_render.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "ruff>=0.4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cowork_render"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
