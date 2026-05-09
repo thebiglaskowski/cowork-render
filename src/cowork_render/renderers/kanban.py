@@ -48,7 +48,7 @@ header h1 { font-size: 1.6rem; color: #f0f3f6; margin-bottom: 0.4rem; }
 .btn-primary:hover { background: #79b8ff; }
 .btn-secondary { background: #25272e; color: #e1e4e8; border: 1px solid #2d3138; }
 .btn-secondary:hover { background: #2a2c33; }
-.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: start; }
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: start; }
 .column { background: #1f2128; border: 1px solid #2d3138; border-radius: 6px; padding: 0.75rem; }
 .column-title { font-size: 1rem; color: #f0f3f6; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
 .card-count { background: #25272e; border: 1px solid #2d3138; border-radius: 10px; font-size: 0.75rem; padding: 0.1rem 0.5rem; color: #8b949e; }
@@ -58,7 +58,14 @@ header h1 { font-size: 1.6rem; color: #f0f3f6; margin-bottom: 0.4rem; }
 .card:hover { background: #2a2c33; }
 .card.dragging { opacity: 0.5; cursor: grabbing; }
 .card-title { font-size: 0.9rem; color: #f0f3f6; font-weight: normal; }
-.card-body { font-size: 0.8rem; color: #8b949e; margin-top: 0.25rem; line-height: 1.4; white-space: pre-wrap; }
+.card-body { font-size: 0.8rem; color: #8b949e; margin-top: 0.25rem; line-height: 1.4; }
+.card-body p { margin: 0; }
+.card-body p + p { margin-top: 0.55rem; }
+.card-body strong { color: #f0f3f6; font-weight: 600; }
+.card-body em { color: #e1e4e8; font-style: italic; }
+.card-body code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; }
+.card-body a { color: #58a6ff; text-decoration: underline; }
+.card-body a:hover { color: #79b8ff; }
 .no-cards { color: #8b949e; font-size: 0.8rem; font-style: italic; text-align: center; padding: 0.5rem 0; }
 footer { margin-top: 1.5rem; font-size: 0.75rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
 #export-fallback { width: 100%; margin-top: 0.5rem; background: #1f2128; color: #e1e4e8; border: 1px solid #2d3138; padding: 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.8rem; height: 200px; }
@@ -120,8 +127,8 @@ document.getElementById('copy-md').addEventListener('click', () => {
     col.querySelectorAll('.card').forEach(card => {
       lines.push('');
       lines.push('### ' + card.querySelector('.card-title').textContent.trim());
-      const body = card.querySelector('.card-body');
-      if (body) { lines.push(''); lines.push(body.textContent.trim()); }
+      const mdBody = card.dataset.markdownBody;
+      if (mdBody) { lines.push(''); lines.push(mdBody.trim()); }
     });
   });
   const md = lines.join('\\n');
@@ -216,6 +223,22 @@ def render(source_path: Path, options: dict | None = None) -> str:
     return _render_html(board)
 
 
+def _render_card_body_markdown(body: str) -> str:
+    """Render inline markdown in card body text as HTML paragraphs."""
+    escaped = html.escape(body)
+    parts = []
+    for para in re.split(r"\n\n+", escaped):
+        text = para.strip()
+        if not text:
+            continue
+        text = re.sub(r'\*\*([^*]+?)\*\*', r'<strong>\1</strong>', text)
+        text = re.sub(r'\*(\S[^*]*?\S|\S)\*', r'<em>\1</em>', text)
+        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+        text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+        parts.append(f"<p>{text}</p>")
+    return "".join(parts)
+
+
 def _json_script_safe(value: str) -> str:
     """json.dumps + escape < so </script> cannot break out of the script block."""
     return json.dumps(value).replace("<", "\\u003c")
@@ -283,9 +306,12 @@ def _render_cards(cards: list[Card]) -> str:
 def _render_card(card: Card) -> str:
     body = ""
     if card.body:
-        body = f'\n            <div class="card-body">{html.escape(card.body)}</div>'
+        html_body = _render_card_body_markdown(card.body)
+        body = f'\n            <div class="card-body">{html_body}</div>'
+    markdown_body_attr = html.escape(card.body, quote=True)
     return (
-        f'\n          <article class="card" draggable="true" data-card-id="{card.card_id}">\n'
+        f'\n          <article class="card" draggable="true" data-card-id="{card.card_id}"'
+        f' data-markdown-body="{markdown_body_attr}">\n'
         f'            <h3 class="card-title">{html.escape(card.title)}</h3>{body}\n'
         f"          </article>"
     )

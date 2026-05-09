@@ -1,3 +1,4 @@
+import html
 import re
 from pathlib import Path
 
@@ -177,3 +178,73 @@ render-html-options:
     path = _write(tmp_path, content)
     board = kanban.parse(path)
     assert [c.name for c in board.columns] == ["Now", "Next", "Later", "Cut"]
+
+
+# --- v1.1 tests: inline markdown rendering ---
+
+
+def test_markdown_render_bold():
+    result = kanban._render_card_body_markdown("**Why it matters.**")
+    assert "<strong>Why it matters.</strong>" in result
+    assert "**" not in result
+
+
+def test_markdown_render_italic():
+    result = kanban._render_card_body_markdown("*emphasis*")
+    assert "<em>emphasis</em>" in result
+
+
+def test_markdown_render_inline_code():
+    result = kanban._render_card_body_markdown("`current-session.md`")
+    assert "<code>current-session.md</code>" in result
+
+
+def test_markdown_render_link():
+    result = kanban._render_card_body_markdown(
+        "[next-actions.md](../autoscriptstudio/next-actions.md)"
+    )
+    assert '<a href="../autoscriptstudio/next-actions.md">next-actions.md</a>' in result
+
+
+def test_markdown_render_paragraph_splitting():
+    body = "Para one.\n\nPara two.\n\nPara three."
+    result = kanban._render_card_body_markdown(body)
+    assert result.count("<p>") == 3
+    assert result.count("</p>") == 3
+    assert "\n\n" not in result
+
+
+def test_markdown_render_html_escape_in_bold():
+    body = "**<script>alert(1)</script>**"
+    result = kanban._render_card_body_markdown(body)
+    assert "&lt;script&gt;" in result
+    assert "<strong>" in result and "</strong>" in result
+    assert "<script>" not in result
+
+
+def test_markdown_render_whitespace_asterisk_no_italic():
+    result = kanban._render_card_body_markdown("5 * 7 = 35")
+    assert "<em>" not in result
+
+
+def test_data_markdown_body_roundtrip(tmp_path):
+    original_body = "**bold** and *italic* and `code`"
+    content = (
+        "---\nrender-html: kanban\n---\n\n"
+        f"## Now\n\n### Card Title\n\n{original_body}\n\n"
+    )
+    path = _write(tmp_path, content)
+    result = kanban.render(path)
+    expected_attr = html.escape(original_body, quote=True)
+    assert f'data-markdown-body="{expected_attr}"' in result
+
+
+def test_articles_have_data_markdown_body(tmp_path):
+    path = _write(tmp_path, FIXTURE_MD)
+    result = kanban.render(path)
+    articles = re.findall(
+        r'<article class="card"[^>]*data-markdown-body="([^"]*)"', result
+    )
+    non_empty = [a for a in articles if a]
+    # FIXTURE_MD has three cards with bodies: Body A., Body B., Body C.
+    assert len(non_empty) == 3
