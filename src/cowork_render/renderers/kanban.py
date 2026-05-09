@@ -58,7 +58,7 @@ header h1 { font-size: 1.6rem; color: #f0f3f6; margin-bottom: 0.4rem; }
 .card:hover { background: #2a2c33; }
 .card.dragging { opacity: 0.5; cursor: grabbing; }
 .card-title { font-size: 0.9rem; color: #f0f3f6; font-weight: normal; }
-.card-body { font-size: 0.8rem; color: #8b949e; margin-top: 0.25rem; line-height: 1.4; }
+.card-body { font-size: 0.8rem; color: #8b949e; margin-top: 0.25rem; line-height: 1.4; white-space: pre-wrap; }
 .no-cards { color: #8b949e; font-size: 0.8rem; font-style: italic; text-align: center; padding: 0.5rem 0; }
 footer { margin-top: 1.5rem; font-size: 0.75rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
 #export-fallback { width: 100%; margin-top: 0.5rem; background: #1f2128; color: #e1e4e8; border: 1px solid #2d3138; padding: 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.8rem; height: 200px; }

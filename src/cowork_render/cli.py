@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import re
 import sys
 from pathlib import Path
 
@@ -33,6 +34,8 @@ def dispatch_render(source: Path) -> str:
     if not shape:
         raise NoSignalError(f"no render-html signal in {source}")
     options = post.metadata.get("render-html-options") or {}
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", shape):
+        raise ImportError(f"invalid shape identifier {shape!r} in {source}")
     try:
         module = importlib.import_module(f"cowork_render.renderers.{shape}")
     except ModuleNotFoundError as exc:
@@ -41,7 +44,12 @@ def dispatch_render(source: Path) -> str:
 
 
 def _walk_markdown(root: Path):
-    for item in root.iterdir():
+    try:
+        items = list(root.iterdir())
+    except PermissionError as exc:
+        print(f"warning: skipping unreadable dir {root} — {exc}", file=sys.stderr)
+        return
+    for item in items:
         if item.is_symlink():
             continue
         if item.is_dir():
