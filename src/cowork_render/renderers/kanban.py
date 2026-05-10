@@ -47,8 +47,9 @@ class Board:
 _CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; font-size: var(--font-body-font-size); line-height: var(--font-body-line-height); min-height: 100vh; }
-.container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
-header { margin-bottom: 1.5rem; }
+.container { max-width: 1500px; margin: 0 auto; padding: 1.5rem; }
+header { margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); position: relative; }
+header::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 80px; height: 2px; background: linear-gradient(90deg, var(--link), var(--severity-ok)); border-radius: 999px; }
 header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.4rem; }
 .meta { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono-font-family); margin-bottom: 0.75rem; }
 .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -58,13 +59,13 @@ header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.4rem
 .btn-secondary { background: var(--bg-surface-raised); color: var(--text-base); border: 1px solid var(--border-subtle); }
 .btn-secondary:hover { background: var(--bg-surface-hover); }
 .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: start; }
-.column { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 1rem; }
+.column { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--rounded-lg); padding: 1rem; box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 1px 2px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.15); }
 .column-title { font-size: 1rem; color: var(--text-heading); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
 .card-count { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: 10px; font-size: 0.75rem; padding: 0.1rem 0.5rem; color: var(--text-muted); }
 .cards { display: flex; flex-direction: column; gap: 0.5rem; min-height: 40px; padding: 4px; }
 .cards.drop-active { outline: 2px dashed var(--link); background: #1c2030; border-radius: 4px; }
-.card { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: 5px; padding: 0.85rem 1rem; cursor: grab; transition: background-color 0.15s ease, border-color 0.15s ease; }
-.card:hover { background: var(--bg-surface-hover); }
+.card { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--rounded-lg); padding: 0.85rem 1rem; cursor: grab; transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease; box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 1px 2px rgba(0,0,0,0.3); }
+.card:hover { background: var(--bg-surface-hover); box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 4px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.2); transform: translateY(-1px); }
 .card.dragging { opacity: 0.5; cursor: grabbing; }
 .card-title { font-size: 0.9rem; color: var(--text-heading); font-weight: normal; }
 .card-body { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.4; }

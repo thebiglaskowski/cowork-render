@@ -357,3 +357,17 @@ def test_parse_h3_without_subsections(tmp_path):
     assert tb.heading == "Plain Section"
     assert len(tb.subsections) == 0
     assert len(tb.rows) == 1
+
+
+def test_preamble_pre_has_white_space_pre_wrap(tmp_path):
+    from cowork_render.renderers.dashboard import _CSS
+    assert "white-space: pre-wrap" in _CSS
+
+
+def test_code_block_wrapper_pre_overrides_to_white_space_pre(tmp_path):
+    from cowork_render.renderers.dashboard import _CSS
+    wrap_pos = _CSS.index(".code-block-wrapper pre")
+    preamble_pos = _CSS.index(".preamble pre")
+    assert wrap_pos > preamble_pos, ".code-block-wrapper pre must come after .preamble pre to override it"
+    wrapper_snippet = _CSS[wrap_pos:wrap_pos + 200]
+    assert "white-space: pre;" in wrapper_snippet

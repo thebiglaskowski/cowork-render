@@ -23,7 +23,7 @@ def test_get_theme_css_structure():
 
 
 def test_color_returns_hex_for_known_token():
-    assert color("bg-base") == "#272822"
+    assert color("bg-base") == "#0d1117"
 
 
 def test_color_raises_for_unknown_token():

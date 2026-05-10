@@ -58,16 +58,17 @@ _CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; font-size: var(--font-body-font-size); line-height: var(--font-body-line-height); min-height: 100vh; }
 .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
-header { margin-bottom: 1.5rem; }
+header { margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); position: relative; }
+header::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 80px; height: 2px; background: linear-gradient(90deg, var(--link), var(--severity-ok)); border-radius: 999px; }
 header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.25rem; }
 .subtitle { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.4rem; }
 .meta { font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono-font-family); }
-.preamble { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
+.preamble { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--rounded-lg); padding: 0.75rem 1rem; margin-bottom: 1.25rem; box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 1px 2px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.15); }
 .preamble summary { color: var(--text-heading); cursor: pointer; font-size: 0.9rem; user-select: none; }
 .preamble-body { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
 .preamble-body p { margin: 0; }
 .preamble-body p + p { margin-top: 0.55rem; }
-.filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
+.filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; position: sticky; top: 0; z-index: 5; background: var(--bg-base); padding: 0.5rem 0; }
 .filter-bar label { font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
 input[type="date"], input[type="search"] { background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: var(--font-mono-font-family); }
 input[type="date"]:focus, input[type="search"]:focus { outline: 1px solid var(--link); border-color: var(--link); }
@@ -82,7 +83,7 @@ input[type="date"]:focus, input[type="search"]:focus { outline: 1px solid var(--
 .entry::before { content: ''; position: absolute; left: -30px; top: 0.9rem; width: 28px; height: 2px; background: var(--border-subtle); }
 .entry-marker { position: absolute; left: -150px; width: 115px; top: 0.55rem; text-align: right; }
 .entry-date { font-size: 0.75rem; font-family: var(--font-mono-font-family); color: var(--link); background: var(--bg-base); border: 1px solid var(--border-subtle); padding: 0.1rem 0.35rem; border-radius: 3px; display: inline-block; }
-.entry-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem 1rem; }
+.entry-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--rounded-lg); padding: 1rem 1.25rem; box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 1px 2px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.15); }
 .entry-title { font-size: 0.95rem; color: var(--text-heading); font-weight: normal; margin-bottom: 0.4rem; }
 .entry-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
 .tag-pill { font-size: 0.72rem; background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: 10px; padding: 0.1rem 0.5rem; font-family: var(--font-mono-font-family); }
