@@ -13,6 +13,7 @@ from pathlib import Path
 import frontmatter
 
 from cowork_render._markdown import render_inline as _ri
+from cowork_render.theme import get_theme_css
 
 
 def _render_card_body_markdown(body: str) -> str:
@@ -45,38 +46,38 @@ class Board:
 
 _CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #16161a; color: #e1e4e8; font-family: Georgia, 'Times New Roman', serif; min-height: 100vh; }
+body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; min-height: 100vh; }
 .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 header { margin-bottom: 1.5rem; }
-header h1 { font-size: 1.6rem; color: #f0f3f6; margin-bottom: 0.4rem; }
-.meta { font-size: 0.8rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; margin-bottom: 0.75rem; }
+header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.4rem; }
+.meta { font-size: 0.8rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; margin-bottom: 0.75rem; }
 .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .btn { padding: 0.4rem 0.9rem; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-family: inherit; }
-.btn-primary { background: #58a6ff; color: #fff; }
-.btn-primary:hover { background: #79b8ff; }
-.btn-secondary { background: #25272e; color: #e1e4e8; border: 1px solid #2d3138; }
-.btn-secondary:hover { background: #2a2c33; }
+.btn-primary { background: var(--link); color: #fff; }
+.btn-primary:hover { background: var(--link-hover); }
+.btn-secondary { background: var(--bg-surface-raised); color: var(--text-base); border: 1px solid var(--border-subtle); }
+.btn-secondary:hover { background: var(--bg-surface-hover); }
 .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: start; }
-.column { background: #1f2128; border: 1px solid #2d3138; border-radius: 6px; padding: 0.75rem; }
-.column-title { font-size: 1rem; color: #f0f3f6; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
-.card-count { background: #25272e; border: 1px solid #2d3138; border-radius: 10px; font-size: 0.75rem; padding: 0.1rem 0.5rem; color: #8b949e; }
+.column { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem; }
+.column-title { font-size: 1rem; color: var(--text-heading); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+.card-count { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: 10px; font-size: 0.75rem; padding: 0.1rem 0.5rem; color: var(--text-muted); }
 .cards { display: flex; flex-direction: column; gap: 0.5rem; min-height: 40px; padding: 4px; }
-.cards.drop-active { outline: 2px dashed #58a6ff; background: #1c2030; border-radius: 4px; }
-.card { background: #25272e; border: 1px solid #2d3138; border-radius: 5px; padding: 0.6rem 0.75rem; cursor: grab; }
-.card:hover { background: #2a2c33; }
+.cards.drop-active { outline: 2px dashed var(--link); background: #1c2030; border-radius: 4px; }
+.card { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: 5px; padding: 0.6rem 0.75rem; cursor: grab; }
+.card:hover { background: var(--bg-surface-hover); }
 .card.dragging { opacity: 0.5; cursor: grabbing; }
-.card-title { font-size: 0.9rem; color: #f0f3f6; font-weight: normal; }
-.card-body { font-size: 0.8rem; color: #8b949e; margin-top: 0.25rem; line-height: 1.4; }
+.card-title { font-size: 0.9rem; color: var(--text-heading); font-weight: normal; }
+.card-body { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.4; }
 .card-body p { margin: 0; }
 .card-body p + p { margin-top: 0.55rem; }
-.card-body strong { color: #f0f3f6; font-weight: 600; }
-.card-body em { color: #e1e4e8; font-style: italic; }
-.card-body code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; }
-.card-body a { color: #58a6ff; text-decoration: underline; }
-.card-body a:hover { color: #79b8ff; }
-.no-cards { color: #8b949e; font-size: 0.8rem; font-style: italic; text-align: center; padding: 0.5rem 0; }
-footer { margin-top: 1.5rem; font-size: 0.75rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
-#export-fallback { width: 100%; margin-top: 0.5rem; background: #1f2128; color: #e1e4e8; border: 1px solid #2d3138; padding: 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.8rem; height: 200px; }
+.card-body strong { color: var(--text-heading); font-weight: 600; }
+.card-body em { color: var(--text-base); font-style: italic; }
+.card-body code { background: var(--bg-code); color: var(--text-code); padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; }
+.card-body a { color: var(--link); text-decoration: underline; }
+.card-body a:hover { color: var(--link-hover); }
+.no-cards { color: var(--text-muted); font-size: 0.8rem; font-style: italic; text-align: center; padding: 0.5rem 0; }
+footer { margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; }
+#export-fallback { width: 100%; margin-top: 0.5rem; background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); padding: 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.8rem; height: 200px; }
 @media (max-width: 600px) { .board { grid-template-columns: 1fr; } }"""
 
 # Plain string (not f-string) — JS braces need no escaping here.
@@ -250,7 +251,8 @@ def _render_html(board: Board) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title_esc}</title>
-  <style>{_CSS}</style>
+  <style>{get_theme_css()}
+{_CSS}</style>
 </head>
 <body>
   <div class="container">

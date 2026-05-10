@@ -11,6 +11,7 @@ from pathlib import Path
 import frontmatter
 
 from cowork_render.renderers._inline import render_inline_markdown
+from cowork_render.theme import get_theme_css
 
 # Matches H2–H4 headings with a YYYY-MM-DD — title date prefix.
 # Compatible with cowork-graph's decision-heading pattern.
@@ -54,50 +55,50 @@ class Timeline:
 
 _CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #16161a; color: #e1e4e8; font-family: Georgia, 'Times New Roman', serif; min-height: 100vh; }
+body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; min-height: 100vh; }
 .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
 header { margin-bottom: 1.5rem; }
-header h1 { font-size: 1.6rem; color: #f0f3f6; margin-bottom: 0.25rem; }
-.subtitle { font-size: 0.9rem; color: #8b949e; margin-bottom: 0.4rem; }
-.meta { font-size: 0.78rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
-.preamble { background: #1f2128; border: 1px solid #2d3138; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
-.preamble summary { color: #f0f3f6; cursor: pointer; font-size: 0.9rem; user-select: none; }
-.preamble-body { margin-top: 0.75rem; font-size: 0.85rem; color: #8b949e; line-height: 1.55; }
+header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.25rem; }
+.subtitle { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+.meta { font-size: 0.78rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.preamble { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
+.preamble summary { color: var(--text-heading); cursor: pointer; font-size: 0.9rem; user-select: none; }
+.preamble-body { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
 .preamble-body p { margin: 0; }
 .preamble-body p + p { margin-top: 0.55rem; }
 .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
-.filter-bar label { font-size: 0.82rem; color: #8b949e; display: flex; align-items: center; gap: 0.35rem; }
-input[type="date"], input[type="search"] { background: #1f2128; color: #e1e4e8; border: 1px solid #2d3138; border-radius: 4px; padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
-input[type="date"]:focus, input[type="search"]:focus { outline: 1px solid #58a6ff; border-color: #58a6ff; }
-.match-count { font-size: 0.78rem; color: #8b949e; margin-left: auto; font-family: 'SF Mono', Menlo, Consolas, monospace; }
-.btn { padding: 0.3rem 0.75rem; border-radius: 4px; border: 1px solid #2d3138; cursor: pointer; font-size: 0.82rem; font-family: inherit; background: #25272e; color: #e1e4e8; }
-.btn:hover { background: #2a2c33; }
+.filter-bar label { font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
+input[type="date"], input[type="search"] { background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+input[type="date"]:focus, input[type="search"]:focus { outline: 1px solid var(--link); border-color: var(--link); }
+.match-count { font-size: 0.78rem; color: var(--text-muted); margin-left: auto; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.btn { padding: 0.3rem 0.75rem; border-radius: 4px; border: 1px solid var(--border-subtle); cursor: pointer; font-size: 0.82rem; font-family: inherit; background: var(--bg-surface-raised); color: var(--text-base); }
+.btn:hover { background: var(--bg-surface-hover); }
 .timeline { position: relative; }
-.spine { position: absolute; left: 120px; top: 0; bottom: 0; width: 2px; background: #2d3138; }
+.spine { position: absolute; left: 120px; top: 0; bottom: 0; width: 2px; background: var(--border-subtle); }
 .entries { padding-left: 150px; }
 .entry { position: relative; margin-bottom: 1.5rem; }
 .entry.hidden { display: none; }
-.entry::before { content: ''; position: absolute; left: -30px; top: 0.9rem; width: 28px; height: 2px; background: #2d3138; }
+.entry::before { content: ''; position: absolute; left: -30px; top: 0.9rem; width: 28px; height: 2px; background: var(--border-subtle); }
 .entry-marker { position: absolute; left: -150px; width: 115px; top: 0.55rem; text-align: right; }
-.entry-date { font-size: 0.75rem; font-family: 'SF Mono', Menlo, Consolas, monospace; color: #58a6ff; background: #16161a; border: 1px solid #2d3138; padding: 0.1rem 0.35rem; border-radius: 3px; display: inline-block; }
-.entry-card { background: #1f2128; border: 1px solid #2d3138; border-radius: 6px; padding: 0.75rem 1rem; }
-.entry-title { font-size: 0.95rem; color: #f0f3f6; font-weight: normal; margin-bottom: 0.4rem; }
+.entry-date { font-size: 0.75rem; font-family: 'SF Mono', Menlo, Consolas, monospace; color: var(--link); background: var(--bg-base); border: 1px solid var(--border-subtle); padding: 0.1rem 0.35rem; border-radius: 3px; display: inline-block; }
+.entry-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem 1rem; }
+.entry-title { font-size: 0.95rem; color: var(--text-heading); font-weight: normal; margin-bottom: 0.4rem; }
 .entry-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
-.tag-pill { font-size: 0.72rem; background: #25272e; border: 1px solid #2d3138; color: #8b949e; border-radius: 10px; padding: 0.1rem 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.tag-pill { font-size: 0.72rem; background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: 10px; padding: 0.1rem 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
 .entry-fields { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; }
 .field { display: grid; grid-template-columns: 160px 1fr; gap: 0.5rem; align-items: start; }
-.field-label { font-size: 0.78rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; padding-top: 0.05rem; }
-.field-value { font-size: 0.85rem; color: #e1e4e8; line-height: 1.45; }
+.field-label { font-size: 0.78rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; padding-top: 0.05rem; }
+.field-value { font-size: 0.85rem; color: var(--text-base); line-height: 1.45; }
 .field-value p { margin: 0; }
 .field-value p + p { margin-top: 0.4rem; }
-.field-value strong { color: #f0f3f6; font-weight: 600; }
+.field-value strong { color: var(--text-heading); font-weight: 600; }
 .field-value em { font-style: italic; }
-.field-value code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; }
-.field-value a { color: #58a6ff; text-decoration: underline; }
-.entry-prose { font-size: 0.85rem; color: #8b949e; line-height: 1.45; margin-top: 0.4rem; }
+.field-value code { background: var(--bg-code); color: var(--text-code); padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; }
+.field-value a { color: var(--link); text-decoration: underline; }
+.entry-prose { font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.4rem; }
 .entry-prose p { margin: 0; }
 .entry-prose p + p { margin-top: 0.5rem; }
-footer { margin-top: 2rem; font-size: 0.75rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+footer { margin-top: 2rem; font-size: 0.75rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; }
 @media (max-width: 600px) {
   .spine { display: none; }
   .entries { padding-left: 0; }
@@ -248,7 +249,8 @@ def _render_html(timeline: Timeline) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title_esc}</title>
-  <style>{_CSS}</style>
+  <style>{get_theme_css()}
+{_CSS}</style>
 </head>
 <body>
   <div class="container">
