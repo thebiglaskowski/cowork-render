@@ -14,13 +14,25 @@ FAKE = Path("/tmp/fake.md")
 # ---------------------------------------------------------------------------
 
 def test_kanban_high_confidence_on_status_columns_with_cards():
-    content = "## Backlog\n\n### Task A\n\ndesc\n\n## Done\n\n### Task B\n"
+    # 3 keyword H2s, each with at least one H3 card
+    content = (
+        "## Backlog\n\n### Task A\n\ndesc\n\n"
+        "## In Progress\n\n### Task B\n\n"
+        "## Done\n\n### Task C\n"
+    )
     confidence, _, _ = kanban.detect(content, FAKE)
     assert confidence == "high"
 
 
-def test_kanban_medium_confidence_on_one_keyword_column():
-    content = "## Backlog\n\n### Task A\n\n## Random Heading\n\n### Task B\n"
+def test_kanban_medium_confidence_on_two_keyword_columns_of_five():
+    # 5 H2s, 2 keywords (Now, Done), 3 non-keyword — qualifies for medium
+    content = (
+        "## Now\n\n### Task A\n\n"
+        "## Done\n\n### Task B\n\n"
+        "## References\n\nSome prose.\n\n"
+        "## Notes\n\nMore prose.\n\n"
+        "## Glossary\n\nDefinitions.\n"
+    )
     confidence, _, _ = kanban.detect(content, FAKE)
     assert confidence == "medium"
 
@@ -29,15 +41,113 @@ def test_kanban_returns_none_when_no_h2():
     assert kanban.detect("# Title\n\n### Card\n", FAKE) is None
 
 
-def test_kanban_returns_none_when_no_cards():
-    content = "## Backlog\n\nSome prose.\n\n## Done\n\nMore prose.\n"
+def test_kanban_returns_none_when_no_keyword_h2s():
+    # 3+ H2s but none match status keywords
+    content = "## Overview\n\nProse.\n\n## Details\n\n### Sub\n\n## References\n\nLinks.\n"
+    assert kanban.detect(content, FAKE) is None
+
+
+def test_kanban_returns_none_when_fewer_than_three_h2s():
+    # 2 H2s even with keyword match — structural minimum not met
+    content = "## Backlog\n\n### Task A\n\n## Done\n\n### Task B\n"
     assert kanban.detect(content, FAKE) is None
 
 
 def test_kanban_normalises_trailing_count():
-    content = "## Done (3)\n\n### Task A\n\n## Backlog (7)\n\n### Task B\n"
+    # Trailing "(N)" stripped before keyword matching
+    content = (
+        "## Done (3)\n\n### Task A\n\n"
+        "## Backlog (7)\n\n### Task B\n\n"
+        "## In Progress (2)\n\n### Task C\n"
+    )
     confidence, _, _ = kanban.detect(content, FAKE)
     assert confidence == "high"
+
+
+def test_kanban_suggested_columns_included():
+    content = (
+        "## Now\n\n### Task A\n\n"
+        "## Next\n\n### Task B\n\n"
+        "## Done\n\n### Task C\n"
+    )
+    _, _, options = kanban.detect(content, FAKE)
+    assert "columns" in options
+    assert options["columns"] == ["Now", "Next", "Done"]
+
+
+# ---------------------------------------------------------------------------
+# Brief-specified tuning tests (Phase 9 v1.1)
+# ---------------------------------------------------------------------------
+
+def test_kanban_brief_style_doc_returns_none():
+    content = (
+        "## Goal\n\nWhat we're building.\n\n"
+        "## Scope\n\nWhat's in/out.\n\n"
+        "## Tests\n\nHow to verify.\n\n"
+        "## Acceptance\n\nDone means done.\n\n"
+        "## Do NOT\n\nThings to avoid.\n"
+    )
+    assert kanban.detect(content, FAKE) is None
+
+
+def test_kanban_skill_style_doc_returns_none():
+    content = (
+        "## When to Invoke\n\nUse when.\n\n"
+        "## What This Skill Does\n\nOverview.\n\n"
+        "## Output Format\n\nWhat you get.\n\n"
+        "## Worked Example\n\nSample interaction.\n"
+    )
+    assert kanban.detect(content, FAKE) is None
+
+
+def test_kanban_plan_style_doc_returns_none():
+    content = (
+        "## Phase 1\n\n### Task 1\n\n"
+        "## Phase 2\n\n### Task 2\n\n"
+        "## Phase 3\n\n### Task 3\n\n"
+        "## Phase 4\n\n### Task 4\n"
+    )
+    assert kanban.detect(content, FAKE) is None
+
+
+def test_kanban_high_preserved_four_keyword_h2s_all_with_cards():
+    content = (
+        "## Now\n\n### Task A\n\n"
+        "## Next\n\n### Task B\n\n"
+        "## Later\n\n### Task C\n\n"
+        "## Done\n\n### Task D\n"
+    )
+    confidence, _, _ = kanban.detect(content, FAKE)
+    assert confidence == "high"
+
+
+def test_kanban_medium_on_two_keywords_three_non_keywords():
+    content = (
+        "## Now\n\n### Task A\n\n"
+        "## Done\n\n### Task B\n\n"
+        "## Notes\n\nSome notes.\n\n"
+        "## References\n\nLinks.\n\n"
+        "## Glossary\n\nDefs.\n"
+    )
+    confidence, rationale, _ = kanban.detect(content, FAKE)
+    assert confidence == "medium"
+    assert "non-keyword" in rationale
+
+
+def test_kanban_low_on_one_keyword_of_four():
+    content = (
+        "## Done\n\n### Task A\n\n"
+        "## Overview\n\nProse.\n\n"
+        "## Details\n\n### Subsection\n\n"
+        "## References\n\nLinks.\n"
+    )
+    confidence, _, _ = kanban.detect(content, FAKE)
+    assert confidence == "low"
+
+
+def test_kanban_below_threshold_two_h2s_both_keywords():
+    content = "## Now\n\n### Task A\n\n## Done\n\n### Task B\n"
+    assert kanban.detect(content, FAKE) is None
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +225,7 @@ def test_timeline_returns_none_for_no_date_headings():
 # ---------------------------------------------------------------------------
 
 def test_detect_shape_picks_highest_confidence():
+    # 3 keyword H2s, each with a card → kanban high
     content = (
         "## Backlog\n\n### Task A\n\n"
         "## In Progress\n\n### Task B\n\n"
@@ -132,18 +243,27 @@ def test_detect_shape_returns_none_when_no_pattern():
 
 
 def test_detect_shape_includes_suggested_frontmatter():
-    content = "## Backlog\n\n### Task A\n\n## Done\n\n### Task B\n"
+    # 3 keyword H2s, each with a card → kanban
+    content = (
+        "## Now\n\n### Task A\n\n"
+        "## Next\n\n### Task B\n\n"
+        "## Done\n\n### Task C\n"
+    )
     match = detect_shape(content, FAKE)
     assert match is not None
     assert match.suggested_frontmatter.get("render-html") == "kanban"
 
 
 def test_detect_shape_tiebreak_kanban_over_dashboard():
-    # kanban: 1 keyword column + 1 card → medium
-    # dashboard: 2 typed columns + 2 data rows → medium
-    # kanban should win on shape priority
+    # kanban: 2 keyword H2s out of 5 → medium
+    # dashboard: 2 typed columns, 2 data rows → medium
+    # kanban wins on shape priority tiebreak
     content = (
-        "## Backlog\n\n### Task A\n\n"
+        "## Now\n\n### Task A\n\n"
+        "## Done\n\n### Task B\n\n"
+        "## Notes\n\nProse.\n\n"
+        "## References\n\nLinks.\n\n"
+        "## Glossary\n\nDefs.\n\n"
         "| Status | Priority |\n"
         "|--------|----------|\n"
         "| Done   | High     |\n"
