@@ -12,7 +12,7 @@ from pathlib import Path
 
 import frontmatter
 
-from cowork_render._markdown import render_inline as _ri
+from cowork_render._markdown import get_copy_button_js, render_inline as _ri
 from cowork_render.theme import get_theme_css
 
 
@@ -46,11 +46,11 @@ class Board:
 
 _CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; min-height: 100vh; }
+body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; font-size: var(--font-body-font-size); line-height: var(--font-body-line-height); min-height: 100vh; }
 .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 header { margin-bottom: 1.5rem; }
 header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.4rem; }
-.meta { font-size: 0.8rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; margin-bottom: 0.75rem; }
+.meta { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono-font-family); margin-bottom: 0.75rem; }
 .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .btn { padding: 0.4rem 0.9rem; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-family: inherit; }
 .btn-primary { background: var(--link); color: #fff; }
@@ -58,26 +58,33 @@ header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.4rem
 .btn-secondary { background: var(--bg-surface-raised); color: var(--text-base); border: 1px solid var(--border-subtle); }
 .btn-secondary:hover { background: var(--bg-surface-hover); }
 .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: start; }
-.column { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem; }
+.column { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 1rem; }
 .column-title { font-size: 1rem; color: var(--text-heading); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
 .card-count { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: 10px; font-size: 0.75rem; padding: 0.1rem 0.5rem; color: var(--text-muted); }
 .cards { display: flex; flex-direction: column; gap: 0.5rem; min-height: 40px; padding: 4px; }
 .cards.drop-active { outline: 2px dashed var(--link); background: #1c2030; border-radius: 4px; }
-.card { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: 5px; padding: 0.6rem 0.75rem; cursor: grab; }
+.card { background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); border-radius: 5px; padding: 0.85rem 1rem; cursor: grab; transition: background-color 0.15s ease, border-color 0.15s ease; }
 .card:hover { background: var(--bg-surface-hover); }
 .card.dragging { opacity: 0.5; cursor: grabbing; }
 .card-title { font-size: 0.9rem; color: var(--text-heading); font-weight: normal; }
-.card-body { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.4; }
+.card-body { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.4; }
 .card-body p { margin: 0; }
 .card-body p + p { margin-top: 0.55rem; }
 .card-body strong { color: var(--text-heading); font-weight: 600; }
 .card-body em { color: var(--text-base); font-style: italic; }
-.card-body code { background: var(--bg-code); color: var(--text-code); padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; }
-.card-body a { color: var(--link); text-decoration: underline; }
-.card-body a:hover { color: var(--link-hover); }
+.card-body code { background: var(--bg-code); color: var(--text-code); padding: 0.15em 0.4em; border-radius: 3px; font-family: var(--font-mono-font-family); font-size: 0.88em; }
+.card-body a, .preamble a { color: var(--link); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--link) 35%, transparent); transition: color 0.15s ease, border-color 0.15s ease; }
+.card-body a:hover, .preamble a:hover { color: var(--link-hover); border-color: var(--link); }
+.card-body a:visited, .preamble a:visited { color: var(--link-visited); border-color: color-mix(in srgb, var(--link-visited) 35%, transparent); }
 .no-cards { color: var(--text-muted); font-size: 0.8rem; font-style: italic; text-align: center; padding: 0.5rem 0; }
-footer { margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; }
-#export-fallback { width: 100%; margin-top: 0.5rem; background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); padding: 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.8rem; height: 200px; }
+footer { margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-meta-font-family); }
+#export-fallback { width: 100%; margin-top: 0.5rem; background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); padding: 0.5rem; font-family: var(--font-mono-font-family); font-size: 0.8rem; height: 200px; }
+.code-block-wrapper { position: relative; margin: 0.5rem 0; }
+.code-block-wrapper pre { margin: 0; }
+.code-copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: var(--bg-surface-raised); color: var(--text-muted); border: 1px solid var(--border-subtle); border-radius: var(--rounded-sm); padding: 0.2rem 0.6rem; font-size: 0.75rem; font-family: var(--font-mono-font-family); cursor: pointer; opacity: 0; transition: opacity 0.15s ease, color 0.15s ease; }
+.code-block-wrapper:hover .code-copy-btn { opacity: 1; }
+.code-copy-btn:hover { color: var(--text-base); border-color: var(--border-emphasis); }
+.code-copy-btn.copied { color: var(--severity-ok); border-color: var(--severity-ok); }
 @media (max-width: 600px) { .board { grid-template-columns: 1fr; } }"""
 
 # Plain string (not f-string) — JS braces need no escaping here.
@@ -270,7 +277,8 @@ def _render_html(board: Board) -> str:
     <footer>generated by cowork-render kanban v1 &middot; {render_date}</footer>
     <textarea id="export-fallback" hidden></textarea>
   </div>
-  <script>{js}</script>
+  <script>{get_copy_button_js()}
+{js}</script>
 </body>
 </html>"""
 

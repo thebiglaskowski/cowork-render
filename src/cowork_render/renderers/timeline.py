@@ -10,6 +10,7 @@ from pathlib import Path
 
 import frontmatter
 
+from cowork_render._markdown import get_copy_button_js
 from cowork_render.renderers._inline import render_inline_markdown
 from cowork_render.theme import get_theme_css
 
@@ -55,12 +56,12 @@ class Timeline:
 
 _CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; min-height: 100vh; }
+body { background: var(--bg-base); color: var(--text-base); font-family: Georgia, 'Times New Roman', serif; font-size: var(--font-body-font-size); line-height: var(--font-body-line-height); min-height: 100vh; }
 .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
 header { margin-bottom: 1.5rem; }
 header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.25rem; }
 .subtitle { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-.meta { font-size: 0.78rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.meta { font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono-font-family); }
 .preamble { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
 .preamble summary { color: var(--text-heading); cursor: pointer; font-size: 0.9rem; user-select: none; }
 .preamble-body { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
@@ -68,9 +69,9 @@ header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.25re
 .preamble-body p + p { margin-top: 0.55rem; }
 .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
 .filter-bar label { font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
-input[type="date"], input[type="search"] { background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+input[type="date"], input[type="search"] { background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: var(--font-mono-font-family); }
 input[type="date"]:focus, input[type="search"]:focus { outline: 1px solid var(--link); border-color: var(--link); }
-.match-count { font-size: 0.78rem; color: var(--text-muted); margin-left: auto; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.match-count { font-size: 0.78rem; color: var(--text-muted); margin-left: auto; font-family: var(--font-mono-font-family); }
 .btn { padding: 0.3rem 0.75rem; border-radius: 4px; border: 1px solid var(--border-subtle); cursor: pointer; font-size: 0.82rem; font-family: inherit; background: var(--bg-surface-raised); color: var(--text-base); }
 .btn:hover { background: var(--bg-surface-hover); }
 .timeline { position: relative; }
@@ -80,25 +81,39 @@ input[type="date"]:focus, input[type="search"]:focus { outline: 1px solid var(--
 .entry.hidden { display: none; }
 .entry::before { content: ''; position: absolute; left: -30px; top: 0.9rem; width: 28px; height: 2px; background: var(--border-subtle); }
 .entry-marker { position: absolute; left: -150px; width: 115px; top: 0.55rem; text-align: right; }
-.entry-date { font-size: 0.75rem; font-family: 'SF Mono', Menlo, Consolas, monospace; color: var(--link); background: var(--bg-base); border: 1px solid var(--border-subtle); padding: 0.1rem 0.35rem; border-radius: 3px; display: inline-block; }
+.entry-date { font-size: 0.75rem; font-family: var(--font-mono-font-family); color: var(--link); background: var(--bg-base); border: 1px solid var(--border-subtle); padding: 0.1rem 0.35rem; border-radius: 3px; display: inline-block; }
 .entry-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem 1rem; }
 .entry-title { font-size: 0.95rem; color: var(--text-heading); font-weight: normal; margin-bottom: 0.4rem; }
 .entry-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
-.tag-pill { font-size: 0.72rem; background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: 10px; padding: 0.1rem 0.5rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.tag-pill { font-size: 0.72rem; background: var(--bg-surface-raised); border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: 10px; padding: 0.1rem 0.5rem; font-family: var(--font-mono-font-family); }
 .entry-fields { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; }
 .field { display: grid; grid-template-columns: 160px 1fr; gap: 0.5rem; align-items: start; }
-.field-label { font-size: 0.78rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; padding-top: 0.05rem; }
+.field-label { font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono-font-family); padding-top: 0.05rem; }
 .field-value { font-size: 0.85rem; color: var(--text-base); line-height: 1.45; }
 .field-value p { margin: 0; }
 .field-value p + p { margin-top: 0.4rem; }
 .field-value strong { color: var(--text-heading); font-weight: 600; }
 .field-value em { font-style: italic; }
-.field-value code { background: var(--bg-code); color: var(--text-code); padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; }
-.field-value a { color: var(--link); text-decoration: underline; }
+.field-value code { background: var(--bg-code); color: var(--text-code); padding: 0.1em 0.35em; border-radius: 3px; font-family: var(--font-mono-font-family); font-size: 0.88em; }
+.field-value a { color: var(--link); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--link) 35%, transparent); transition: color 0.15s ease, border-color 0.15s ease; }
+.field-value a:hover { color: var(--link-hover); border-color: var(--link); }
+.field-value a:visited { color: var(--link-visited); border-color: color-mix(in srgb, var(--link-visited) 35%, transparent); }
+.preamble-body a { color: var(--link); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--link) 35%, transparent); transition: color 0.15s ease, border-color 0.15s ease; }
+.preamble-body a:hover { color: var(--link-hover); border-color: var(--link); }
+.preamble-body a:visited { color: var(--link-visited); border-color: color-mix(in srgb, var(--link-visited) 35%, transparent); }
 .entry-prose { font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.4rem; }
 .entry-prose p { margin: 0; }
 .entry-prose p + p { margin-top: 0.5rem; }
-footer { margin-top: 2rem; font-size: 0.75rem; color: var(--text-muted); font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.entry-prose a { color: var(--link); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--link) 35%, transparent); transition: color 0.15s ease, border-color 0.15s ease; }
+.entry-prose a:hover { color: var(--link-hover); border-color: var(--link); }
+.entry-prose a:visited { color: var(--link-visited); border-color: color-mix(in srgb, var(--link-visited) 35%, transparent); }
+footer { margin-top: 2rem; font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono-font-family); }
+.code-block-wrapper { position: relative; margin: 0.5rem 0; }
+.code-block-wrapper pre { margin: 0; }
+.code-copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: var(--bg-surface-raised); color: var(--text-muted); border: 1px solid var(--border-subtle); border-radius: var(--rounded-sm); padding: 0.2rem 0.6rem; font-size: 0.75rem; font-family: var(--font-mono-font-family); cursor: pointer; opacity: 0; transition: opacity 0.15s ease, color 0.15s ease; }
+.code-block-wrapper:hover .code-copy-btn { opacity: 1; }
+.code-copy-btn:hover { color: var(--text-base); border-color: var(--border-emphasis); }
+.code-copy-btn.copied { color: var(--severity-ok); border-color: var(--severity-ok); }
 @media (max-width: 600px) {
   .spine { display: none; }
   .entries { padding-left: 0; }
@@ -273,7 +288,8 @@ def _render_html(timeline: Timeline) -> str:
     </div>
     <footer>generated by cowork-render timeline v1 &middot; {render_date}</footer>
   </div>
-  <script>{_JS}</script>
+  <script>{get_copy_button_js()}
+{_JS}</script>
 </body>
 </html>"""
 

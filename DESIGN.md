@@ -1,57 +1,57 @@
 ---
 name: cowork-render dark
-version: alpha
-description: Canonical visual identity for every renderer cowork-render produces (kanban, dashboard, timeline, future shapes). Source of truth — every renderer consumes this via cowork_render.theme.
+version: "2"
+description: Canonical visual identity for every renderer cowork-render produces (kanban, dashboard, timeline, future shapes). Monokai-inspired palette — source of truth for every renderer.
 
 colors:
-  # Backgrounds — lightest to darkest tint
-  bg-base: "#16161a"           # body background, near-black
-  bg-surface: "#1f2128"        # card/panel surface, subtle lift
-  bg-surface-raised: "#25272e" # column headers, raised UI elements
-  bg-surface-hover: "#2a2c33"  # hover state
-  bg-code: "#16161a"           # code-span and code-block background
-  bg-input: "#1f2128"          # input field background
+  # Backgrounds — Monokai-warm dark
+  bg-base: "#272822"            # classic Monokai background, warm dark
+  bg-surface: "#3E3D32"         # card/panel surface, subtle lift
+  bg-surface-raised: "#36352B"  # chip/badge/pill bg — darker inset for embedded labels
+  bg-surface-hover: "#5A594F"   # hover state
+  bg-code: "#1E1F1C"            # deeper for code-span/code-block contrast
+  bg-input: "#3E3D32"
 
-  # Text
-  text-base: "#e1e4e8"         # body text
-  text-heading: "#f0f3f6"      # heading text
-  text-muted: "#8b949e"        # meta lines, "no findings" copy, footers
-  text-strong: "#c9d1d9"       # subsection headings, secondary headings
-  text-code: "#79c0ff"         # inline code text color
+  # Text — Monokai cream
+  text-base: "#F8F8F2"          # primary body cream
+  text-heading: "#FFFFFF"       # headings get pure white pop
+  text-muted: "#ABA994"         # brightened from Monokai's #75715E to pass WCAG AA on bg-base
+  text-strong: "#F8F8F2"        # subsection headings, secondary headings
+  text-code: "#A6E22E"          # Monokai green for inline code
 
   # Borders
-  border-subtle: "#2d3138"     # card borders, hr separators
-  border-emphasis: "#3a3f47"   # focused/emphasized borders
+  border-subtle: "#49483E"
+  border-emphasis: "#75715E"
 
-  # Severity ramp — used for finding cards, status pills, badge backgrounds
-  severity-high: "#f85149"     # red — broken_links in active docs, errors
-  severity-medium: "#e3b341"   # orange — ghost projects, hub inconsistencies
-  severity-low: "#d29922"      # yellow — tag drift, stale docs
-  severity-info: "#8b949e"     # gray — orphan docs, one-way edges
-  severity-ok: "#3fb950"       # green — passing checks, shipped status
+  # Severity ramp — Monokai-mapped
+  severity-high: "#F92672"      # Monokai pink/magenta — vivid signal for real problems
+  severity-medium: "#FD971F"    # Monokai orange — ghost projects, hub inconsistencies
+  severity-low: "#E6DB74"       # Monokai yellow — tag drift, stale docs
+  severity-info: "#75715E"      # Monokai comment gray — orphans, low-priority info
+  severity-ok: "#A6E22E"        # Monokai green — passing checks, shipped
 
-  # Links
-  link: "#58a6ff"              # default link color
-  link-visited: "#a371f7"      # visited link color (where contextually appropriate)
-  link-hover: "#79b8ff"        # link hover state
+  # Links — Monokai cyan + purple
+  link: "#66D9EF"               # Monokai cyan — distinctive link signal
+  link-visited: "#AE81FF"       # Monokai purple — visited body-text links
+  link-hover: "#9EE5F5"         # lightened cyan for hover
 
 typography:
   body:
     fontFamily: Georgia, 'Times New Roman', serif
-    fontSize: 15px
-    lineHeight: 1.65
+    fontSize: 17px
+    lineHeight: 1.7
   heading:
     fontFamily: Georgia, 'Times New Roman', serif
     fontWeight: 600
   mono:
-    fontFamily: "'SF Mono', Menlo, Consolas, monospace"
-    fontSize: 0.85em
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace"
+    fontSize: 0.92em
   meta:
-    fontFamily: "'SF Mono', Menlo, Consolas, monospace"
-    fontSize: 0.78rem
+    fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace"
+    fontSize: 0.85rem
   card-title:
     fontFamily: Georgia, 'Times New Roman', serif
-    fontSize: 0.95rem
+    fontSize: 1rem
     fontWeight: normal
 
 rounded:
@@ -73,25 +73,25 @@ spacing:
 
 ## Overview
 
-Dark-themed reading surface inspired by GitHub's dark mode and IDE-dark conventions. The visual identity is calm — high contrast where it matters (severity badges, headings), muted where it doesn't (body text, meta lines, footers). Every cowork-render output should feel like part of one family even when the shape (kanban, dashboard, timeline) differs.
+Monokai-inspired dark reading surface. Monokai is one of the most-recognized developer color schemes in the world — decades of refinement, immediately readable to anyone who has spent time in a code editor. The palette maps naturally to the information density cowork-render produces: vivid accent colors for severity signals, warm neutrals for body prose, and a distinctive cyan link color that stands apart from both heading and body text without feeling disconnected.
 
-The palette is anchored on near-black `#16161a` rather than pure black to reduce eye strain in long reading sessions, with subtle surface lifts (`#1f2128` for cards, `#25272e` for raised elements) that give visual hierarchy without screaming.
+The background is anchored on Monokai's canonical `#272822` warm dark rather than pure or blue-shifted black. Surface lifts (`#3E3D32` for cards, `#49483E` for raised elements) follow Monokai's own layering logic. Every cowork-render output should feel like part of one family — same palette, same font choices, same spacing rhythm — whether the shape is a kanban, a dashboard, or a timeline.
 
 ## Colors
 
-The palette is rooted in three layers — backgrounds, text, severity — plus links.
+**Backgrounds** warm from `bg-base` (`#272822`, Monokai's canonical body) through `bg-surface` (`#3E3D32`) through `bg-surface-raised` (`#49483E`) through `bg-surface-hover` (`#5A594F`). Warm brown-gray tones rather than the blue-shifted dark common in GitHub-style themes. `bg-code` (`#1E1F1C`) sits slightly darker than `bg-base` for code-span and code-block contrast.
 
-**Backgrounds** ramp from `bg-base` (body) through `bg-surface` (cards) through `bg-surface-raised` (headers) through `bg-surface-hover` (interactive states). Each step lightens by a hair so visual hierarchy reads without explicit borders.
+**Text** is anchored on Monokai cream (`#F8F8F2` for body and strong, `#FFFFFF` for headings). `text-muted` is `#ABA994` — a deliberate deviation from Monokai's original comment color (`#75715E`). Monokai's comment color is intentionally low-contrast in code editors (signaling "deemphasized"), but in body-text contexts it fails WCAG AA at ~4:1 on `bg-base`; `#ABA994` retains the warm-gray feel while passing AA at ~6.2:1. `text-code` uses Monokai green (`#A6E22E`) for inline code accents.
 
-**Text** has four roles: `text-base` (body prose), `text-heading` (h1/h2/h3 in renderer chrome), `text-muted` (meta lines, footers, secondary information), `text-strong` (subsection headings, intermediate emphasis between heading and body). `text-code` is the inline-code accent — a soft blue (`#79c0ff`) that's distinct from links but signals "this is technical content."
+**Severity** maps to Monokai's five core accent colors: pink/magenta for high (`#F92672`), orange for medium (`#FD971F`), yellow for low (`#E6DB74`), comment gray for info (`#75715E`), and green for ok (`#A6E22E`). The ramp uses Monokai's actual accent values — not desaturated approximations — because against the warm dark background they read clearly without being garish.
 
-**Severity** uses a five-tier ramp from `severity-high` (red, real problems demanding attention) down through `severity-medium`, `severity-low`, `severity-info`, ending at `severity-ok` (green, passing state). The colors are deliberately desaturated for dark-bg legibility — not pure red/orange/yellow/green. Used for finding cards in audit, status pills in dashboard, optional tag pills in timeline.
-
-**Links** carry the visited distinction (purple `link-visited`) for body-text contexts where "have I read this" is useful information. UI-element links (count pills, badges) override visited to keep their saturated background contrast intact — that's a renderer-side concern, not a palette concern.
+**Links** use Monokai cyan (`#66D9EF`) as the primary link color. Cyan is distinctive from both heading white and body cream, and signals "interactive" in the same way it does in terminal output and code highlighting. Visited links shift to Monokai purple (`#AE81FF`) — the classic visited-link affordance in a color that fits the palette naturally. Hover lightens to `#9EE5F5`.
 
 ## Typography
 
-Body in Georgia serif — readable for long-form prose, conveys document-rather-than-app feel. Mono in SF Mono / Menlo / Consolas stack for code, paths, dates, anything where character alignment matters. Card titles stay in body font (Georgia) at slightly smaller size — they're not headings, they're labels.
+Body in Georgia serif — readable for long-form prose, conveys document-rather-than-app feel. Body font size is 17px (bumped from 15px for comfortable reading in browser contexts), line-height 1.7.
+
+**JetBrains Mono** leads the monospace stack, with Fira Code → SF Mono → Menlo → Consolas → generic monospace as fallbacks. JBM has strong readability characteristics at small sizes, excellent ligature support, and is common on developer workstations. The font must be installed system-wide to render — no WOFF2 bundle, no CDN fetch. The fallback chain degrades gracefully on machines without JBM; the system mono stack covers every environment. Mono size is 0.92em; meta/timestamp contexts use 0.85rem.
 
 ## Layout primitives
 
@@ -109,4 +109,4 @@ Spacing scale runs from `xs` (4px) through `xxl` (32px) on a roughly 1.5x ratio.
 
 **Don't** use the severity colors for non-severity purposes (e.g., decorative accents). They carry semantic weight; misuse dilutes the signal.
 
-**Don't** add a light-mode variant in v1. Single dark theme is the canonical appearance.
+**Don't** add a light-mode variant in v1. Single Monokai dark theme is canonical.

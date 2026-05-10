@@ -23,7 +23,7 @@ def test_get_theme_css_structure():
 
 
 def test_color_returns_hex_for_known_token():
-    assert color("bg-base") == "#16161a"
+    assert color("bg-base") == "#272822"
 
 
 def test_color_raises_for_unknown_token():
@@ -41,3 +41,13 @@ def test_kebab_case_multi_word():
 
 def test_kebab_case_already_simple():
     assert _kebab_case("simple") == "simple"
+
+
+def test_theme_css_includes_jetbrains_mono():
+    css = get_theme_css()
+    assert "JetBrains Mono" in css
+
+
+def test_theme_css_includes_body_font_size_17px():
+    css = get_theme_css()
+    assert "17px" in css

@@ -1,6 +1,6 @@
 """Tests for the shared markdown rendering helpers in cowork_render._markdown."""
 
-from cowork_render._markdown import render_block, render_inline
+from cowork_render._markdown import get_copy_button_js, render_block, render_inline
 
 
 # --- render_inline ---
@@ -65,3 +65,43 @@ def test_render_block_escapes_raw_html():
     result = render_block("<script>alert(1)</script>")
     assert "&lt;script&gt;" in result
     assert "<script>" not in result
+
+
+# --- linkify ---
+
+def test_render_inline_linkifies_bare_url():
+    result = render_inline("see https://example.com for details")
+    assert '<a href="https://example.com"' in result
+
+
+def test_render_block_linkifies_bare_url():
+    result = render_block("see https://example.com for details")
+    assert '<a href="https://example.com"' in result
+
+
+# --- copy-button wrapping ---
+
+def test_render_block_wraps_code_block_with_copy_button():
+    result = render_block("```bash\necho hi\n```")
+    assert 'class="code-block-wrapper"' in result
+    assert 'class="code-copy-btn"' in result
+    assert "<pre>" in result
+
+
+def test_render_block_copy_button_outside_pre():
+    result = render_block("```python\nx = 1\n```")
+    btn_pos = result.index("code-copy-btn")
+    pre_pos = result.index("<pre>")
+    assert btn_pos < pre_pos
+
+
+def test_render_block_no_copy_button_without_code_block():
+    result = render_block("just a paragraph")
+    assert "code-copy-btn" not in result
+
+
+def test_get_copy_button_js_returns_nonempty_string():
+    js = get_copy_button_js()
+    assert isinstance(js, str)
+    assert "code-copy-btn" in js
+    assert "addEventListener" in js
