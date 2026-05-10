@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import html
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
 import frontmatter
 
-from cowork_render.renderers._inline import _apply_inline, render_inline_markdown
+from cowork_render._markdown import render_block, render_inline
+from cowork_render.renderers._inline import _apply_inline
 
 
 _BOOLEAN_RE = re.compile(r'^[✓✗✔✘]$|^(?:yes|no|true|false)$', re.IGNORECASE)
@@ -34,11 +35,20 @@ class Column:
 
 
 @dataclass
+class SubsectionBlock:
+    heading: str
+    notes_md: str
+    columns: list[Column]
+    rows: list[list[str]]
+
+
+@dataclass
 class TableBlock:
     heading: str
     notes_md: str
     columns: list[Column]
     rows: list[list[str]]
+    subsections: list[SubsectionBlock] = field(default_factory=list)
 
 
 @dataclass
@@ -69,10 +79,14 @@ header h1 { font-size: 1.6rem; color: #f0f3f6; margin-bottom: 0.25rem; }
 .preamble { background: #1f2128; border: 1px solid #2d3138; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #8b949e; line-height: 1.55; }
 .preamble p { margin: 0; }
 .preamble p + p { margin-top: 0.5rem; }
-.meta-block { border-left: 3px solid #2d3138; padding-left: 0.75rem; margin: 0.25rem 0; color: #8b949e; font-size: 0.82rem; line-height: 1.65; }
-.meta-block a { color: #58a6ff; text-decoration: none; }
-.meta-block a:hover { text-decoration: underline; }
-.block-heading { color: #c9d1d9; font-size: 0.9rem; margin: 0.5rem 0 0.25rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.preamble ul, .preamble ol { padding-left: 1.5rem; margin: 0.35rem 0; }
+.preamble li { margin-bottom: 0.2rem; line-height: 1.5; }
+.preamble code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.88em; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.preamble pre { background: #16161a; border: 1px solid #2d3138; border-radius: 4px; padding: 0.5rem 0.75rem; overflow-x: auto; margin: 0.35rem 0; }
+.preamble pre code { background: none; padding: 0; border-radius: 0; }
+.preamble blockquote { border-left: 3px solid #2d3138; padding-left: 0.75rem; margin: 0.25rem 0; color: #8b949e; }
+.preamble a { color: #58a6ff; text-decoration: none; }
+.preamble a:hover { text-decoration: underline; }
 .filter-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
 input[type="search"] { background: #1f2128; color: #e1e4e8; border: 1px solid #2d3138; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.82rem; font-family: 'SF Mono', Menlo, Consolas, monospace; width: 240px; }
 input[type="search"]:focus { outline: 1px solid #58a6ff; border-color: #58a6ff; }
@@ -89,6 +103,9 @@ input[type="search"]:focus { outline: 1px solid #58a6ff; border-color: #58a6ff; 
 .section-notes li { margin-bottom: 0.2rem; line-height: 1.5; }
 .section-notes pre { background: #16161a; border: 1px solid #2d3138; border-radius: 4px; padding: 0.5rem 0.75rem; overflow-x: auto; margin: 0.35rem 0; }
 .section-notes pre code { background: none; padding: 0; color: #8b949e; border-radius: 0; }
+.subsection { margin-top: 1rem; padding-left: 0.75rem; border-left: 2px solid #2d3138; }
+.subsection-heading { font-size: 0.88rem; font-weight: 600; color: #c9d1d9; margin-bottom: 0.4rem; padding-bottom: 0.25rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.subsection-notes { font-size: 0.82rem; color: #8b949e; margin-bottom: 0.55rem; line-height: 1.5; }
 .table-wrap { overflow-x: auto; border: 1px solid #2d3138; border-radius: 6px; }
 table.dashboard { border-collapse: collapse; width: 100%; }
 thead { position: sticky; top: 0; z-index: 1; }
@@ -246,53 +263,28 @@ def _cell_class(value: str, col_type: str) -> str:
 
 
 
-def _render_block_md(md: str) -> str:
-    """Block-level renderer for preamble: strips H1, converts H2-H4, renders blockquotes."""
-    lines = md.splitlines()
-    parts = []
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if re.match(r'^# ', line):
-            i += 1
-            continue
-        hm = re.match(r'^(#{2,4}) (.+)', line)
-        if hm:
-            level = len(hm.group(1))
-            text = _apply_inline(html.escape(hm.group(2).strip()))
-            parts.append(f'<h{level} class="block-heading">{text}</h{level}>')
-            i += 1
-            continue
-        if line.startswith('>'):
-            bq_lines = []
-            while i < len(lines) and lines[i].startswith('>'):
-                content = lines[i][1:].lstrip()
-                if content:
-                    bq_lines.append(content)
-                i += 1
-            inner = '<br>'.join(_apply_inline(html.escape(ln)) for ln in bq_lines)
-            if inner:
-                parts.append(f'<blockquote class="meta-block">{inner}</blockquote>')
-            continue
-        if not line.strip():
-            i += 1
-            continue
-        para_lines = []
-        while i < len(lines) and lines[i].strip() and not lines[i].startswith('>') and not re.match(r'^#{1,4} ', lines[i]):
-            para_lines.append(lines[i])
-            i += 1
-        if para_lines:
-            parts.append(render_inline_markdown('\n'.join(para_lines)))
-    return ''.join(parts)
+def _table_from_lines_standalone(seg: list[str]) -> tuple[str, list[str]]:
+    """Return (notes_md, table_lines) from a block of lines, or (body_md, []) if no table."""
+    tstart = next((j for j, ln in enumerate(seg) if ln.strip().startswith('|')), None)
+    if tstart is None:
+        return '\n'.join(seg).strip(), []
+    notes = '\n'.join(seg[:tstart]).strip()
+    tend = tstart
+    while tend < len(seg) and seg[tend].strip().startswith('|'):
+        tend += 1
+    return notes, seg[tstart:tend]
 
 
 def _extract_all_tables(content: str):
     """Extract all markdown tables and prose-only sections in document order.
 
-    Returns (ordered_items, preamble, after). ordered_items is a list where
-    each entry is either ('table', heading, notes_md, table_lines) or
-    ('prose', heading, body_md) for headings with content but no table.
-    Preamble is content before the first H2; after is content after the last table.
+    Returns (ordered_items, preamble). ordered_items entries:
+      ('table', heading, notes_md, table_lines)         — section with a table
+      ('prose', heading, body_md)                       — section with prose only
+      ('section_with_subs', heading, notes_md, subs)    — H3 section containing H4 subsections,
+                                                          subs is list of (h4_heading, sub_lines)
+    Preamble is content before the first H2.
+    H4 headings are not top-level sections — they become subsections of their parent H3.
     """
     lines = content.splitlines()
 
@@ -304,39 +296,42 @@ def _extract_all_tables(content: str):
         preamble = ''
         body = lines
 
+    _H4_RE = re.compile(r'^#### (.+)')
+
+    def _flush_section(heading: str, section_lines: list[str], out: list) -> None:
+        if not heading and not any(ln.strip().startswith('|') for ln in section_lines):
+            return
+        h4_idxs = [j for j, ln in enumerate(section_lines) if _H4_RE.match(ln)]
+        if h4_idxs:
+            notes_md = '\n'.join(section_lines[:h4_idxs[0]]).strip()
+            subs = []
+            for k, h4_idx in enumerate(h4_idxs):
+                h4_heading = _H4_RE.match(section_lines[h4_idx]).group(1).strip()
+                sub_end = h4_idxs[k + 1] if k + 1 < len(h4_idxs) else len(section_lines)
+                subs.append((h4_heading, section_lines[h4_idx + 1:sub_end]))
+            out.append(('section_with_subs', heading, notes_md, subs))
+        else:
+            notes_md, table_lines = _table_from_lines_standalone(section_lines)
+            if table_lines:
+                out.append(('table', heading, notes_md, table_lines))
+            elif notes_md:
+                out.append(('prose', heading, notes_md))
+
     ordered_items: list[tuple] = []
     last_heading = ''
-    last_heading_content_start = 0
+    last_content_start = 0
+    _SEC_RE = re.compile(r'^(#{2,3}) (.+)')
 
     i = 0
     while i < len(body):
-        line = body[i]
-        hm = re.match(r'^(#{2,4}) (.+)', line)
+        hm = _SEC_RE.match(body[i])
         if hm:
-            if last_heading:
-                orphan = '\n'.join(body[last_heading_content_start:i]).strip()
-                if orphan:
-                    ordered_items.append(('prose', last_heading, orphan))
+            _flush_section(last_heading, body[last_content_start:i], ordered_items)
             last_heading = hm.group(2).strip()
-            last_heading_content_start = i + 1
-            i += 1
-            continue
-        if line.strip().startswith('|'):
-            notes = '\n'.join(body[last_heading_content_start:i]).strip()
-            table_start = i
-            while i < len(body) and body[i].strip().startswith('|'):
-                i += 1
-            ordered_items.append(('table', last_heading, notes, body[table_start:i]))
-            last_heading = ''
-            last_heading_content_start = i
-            continue
+            last_content_start = i + 1
         i += 1
 
-    if last_heading:
-        orphan = '\n'.join(body[last_heading_content_start:]).strip()
-        if orphan:
-            ordered_items.append(('prose', last_heading, orphan))
-
+    _flush_section(last_heading, body[last_content_start:], ordered_items)
     return ordered_items, preamble
 
 
@@ -378,8 +373,20 @@ def parse(source_path: Path) -> Dashboard:
     column_types_override: dict[str, str] = dict(options.get('column_types') or {})
 
     ordered_items, preamble_text = _extract_all_tables(post.content)
-    if not any(it[0] == 'table' for it in ordered_items):
+    if not any(it[0] in ('table', 'section_with_subs') for it in ordered_items):
         raise ValueError(f'{source_path}: dashboard requires a primary markdown table')
+
+    def _build_columns(headers: list[str], data_rows: list[list[str]]) -> list[Column]:
+        cols = []
+        for i, name in enumerate(headers):
+            if name in column_types_override:
+                col_type = str(column_types_override[name])
+            else:
+                col_values = [row[i] if i < len(row) else '' for row in data_rows]
+                col_type = _detect_column_type(col_values)
+            is_key = (name == key_column) if key_column else (i == 0)
+            cols.append(Column(name=name, detected_type=col_type, is_key=is_key))
+        return cols
 
     blocks: list = []
     table_blocks: list[TableBlock] = []
@@ -387,20 +394,29 @@ def parse(source_path: Path) -> Dashboard:
         if item[0] == 'prose':
             _, heading, body_md = item
             blocks.append(ProseBlock(heading=heading, body_md=body_md))
+        elif item[0] == 'section_with_subs':
+            _, heading, notes_md, subs = item
+            subsections = []
+            for h4_heading, sub_lines in subs:
+                sub_notes, sub_table_lines = _table_from_lines_standalone(sub_lines)
+                sub_headers, sub_rows = _parse_table_rows(sub_table_lines)
+                if not sub_headers:
+                    continue
+                sub_cols = _build_columns(sub_headers, sub_rows)
+                subsections.append(SubsectionBlock(
+                    heading=h4_heading, notes_md=sub_notes,
+                    columns=sub_cols, rows=sub_rows,
+                ))
+            tb = TableBlock(heading=heading, notes_md=notes_md,
+                            columns=[], rows=[], subsections=subsections)
+            blocks.append(tb)
+            table_blocks.append(tb)
         else:
             _, heading, notes_md, table_lines = item
             headers, data_rows = _parse_table_rows(table_lines)
             if not headers:
                 continue
-            columns = []
-            for i, name in enumerate(headers):
-                if name in column_types_override:
-                    col_type = str(column_types_override[name])
-                else:
-                    col_values = [row[i] if i < len(row) else '' for row in data_rows]
-                    col_type = _detect_column_type(col_values)
-                is_key = (name == key_column) if key_column else (i == 0)
-                columns.append(Column(name=name, detected_type=col_type, is_key=is_key))
+            columns = _build_columns(headers, data_rows)
             tb = TableBlock(heading=heading, notes_md=notes_md, columns=columns, rows=data_rows)
             blocks.append(tb)
             table_blocks.append(tb)
@@ -434,7 +450,7 @@ def _render_html(db: Dashboard) -> str:
         if db.subtitle else ''
     )
     preamble_html = (
-        f'\n    <section class="preamble">{_render_block_md(db.preamble_md)}</section>'
+        f'\n    <section class="preamble">{render_block(db.preamble_md)}</section>'
         if db.preamble_md else ''
     )
     meta_detail = f'{n_tables} tables &middot; {total_rows} rows' if n_tables > 1 else f'{total_rows} rows'
@@ -443,7 +459,7 @@ def _render_html(db: Dashboard) -> str:
     for block in db.blocks:
         if isinstance(block, TableBlock):
             block_parts.append(_render_table_section(block, table_idx))
-            table_idx += 1
+            table_idx += max(1, len(block.subsections))
         else:
             block_parts.append(_render_prose_section(block))
     tables_html = '\n'.join(block_parts)
@@ -474,18 +490,56 @@ def _render_html(db: Dashboard) -> str:
 </html>"""
 
 
+def _render_subsection(sub: SubsectionBlock, idx: int) -> str:
+    heading_html = (
+        f'      <h3 class="subsection-heading">{_apply_inline(html.escape(sub.heading))}</h3>\n'
+        if sub.heading else ''
+    )
+    notes_html = (
+        f'      <div class="subsection-notes">{render_block(sub.notes_md)}</div>\n'
+        if sub.notes_md else ''
+    )
+    thead = _render_thead(sub.columns)
+    tbody_html = _render_tbody(sub.columns, sub.rows)
+    return (
+        f'      <div class="subsection">\n'
+        f'{heading_html}'
+        f'{notes_html}'
+        f'        <div class="table-wrap">\n'
+        f'          <table class="dashboard" data-table-index="{idx}">\n'
+        f'            <thead>\n{thead}\n            </thead>\n'
+        f'            <tbody>\n{tbody_html}\n            </tbody>\n'
+        f'          </table>\n'
+        f'        </div>\n'
+        f'      </div>'
+    )
+
+
 def _render_table_section(table: TableBlock, idx: int) -> str:
     heading_html = (
         f'      <h2 class="section-heading">{_apply_inline(html.escape(table.heading))}</h2>\n'
         if table.heading else ''
     )
     notes_html = (
-        f'      <div class="section-notes">{render_inline_markdown(table.notes_md)}</div>\n'
+        f'      <div class="section-notes">{render_block(table.notes_md)}</div>\n'
         if table.notes_md else ''
     )
+
+    if table.subsections:
+        sub_parts = []
+        for sub in table.subsections:
+            sub_parts.append(_render_subsection(sub, idx))
+            idx += 1
+        return (
+            f'    <section class="table-section">\n'
+            f'{heading_html}'
+            f'{notes_html}'
+            + '\n'.join(sub_parts) + '\n'
+            + '    </section>'
+        )
+
     thead = _render_thead(table.columns)
     tbody_html = _render_tbody(table.columns, table.rows)
-
     return (
         f'    <section class="table-section">\n'
         f'{heading_html}'
@@ -505,7 +559,7 @@ def _render_prose_section(block: ProseBlock) -> str:
         f'      <h2 class="section-heading">{_apply_inline(html.escape(block.heading))}</h2>\n'
         if block.heading else ''
     )
-    body_html = render_inline_markdown(block.body_md)
+    body_html = render_block(block.body_md)
     return (
         f'    <section class="table-section">\n'
         f'{heading_html}'
@@ -542,7 +596,7 @@ def _render_cell(col: Column, value: str) -> str:
     if cls.startswith('cell-bool-') or cls.startswith('cell-status-'):
         content = f'<span class="pill">{value_esc}</span>'
     else:
-        content = _apply_inline(value_esc)
+        content = render_inline(value)
     return f'            <td class="{cls}" data-cell="{name_esc}">{content}</td>\n'
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from cowork_render.renderers import dashboard
-from cowork_render.renderers.dashboard import ProseBlock, TableBlock
+from cowork_render.renderers.dashboard import ProseBlock, SubsectionBlock, TableBlock
 
 FIXTURE_MD = """\
 ---
@@ -261,3 +261,99 @@ def test_render_idempotent(tmp_path):
     r1 = re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC', 'DATE', r1)
     r2 = re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC', 'DATE', r2)
     assert r1 == r2
+
+
+PREAMBLE_BLOCKS_MD = """\
+---
+render-html: dashboard
+---
+
+Intro paragraph.
+
+- **bold-item** description one
+- **bold-item** description two
+
+```bash
+echo hello
+```
+
+## Section A
+
+| Name | Count |
+|------|-------|
+| Foo | 1 |
+
+"""
+
+H3_WITH_H4_SUBS_MD = """\
+---
+render-html: dashboard
+---
+
+### Section 3
+
+Intro for section 3.
+
+#### 3a: First subsection
+
+Notes for 3a.
+
+| Name | Value |
+|------|-------|
+| Alpha | 1 |
+
+#### 3b: Second subsection
+
+| Name | Value |
+|------|-------|
+| Beta | 2 |
+
+"""
+
+H3_WITHOUT_SUBS_MD = """\
+---
+render-html: dashboard
+---
+
+### Plain Section
+
+Notes here.
+
+| Name | Value |
+|------|-------|
+| Gamma | 3 |
+
+"""
+
+
+def test_dashboard_commentary_uses_render_block(tmp_path):
+    path = _write(tmp_path, PREAMBLE_BLOCKS_MD)
+    result = dashboard.render(path)
+    assert "<ul>" in result
+    assert "<li>" in result
+    assert "<pre>" in result
+    assert "<strong>bold-item</strong>" in result
+
+
+def test_parse_h3_with_h4_subsections(tmp_path):
+    path = _write(tmp_path, H3_WITH_H4_SUBS_MD)
+    db = dashboard.parse(path)
+    assert len(db.tables) == 1
+    tb = db.tables[0]
+    assert tb.heading == "Section 3"
+    assert len(tb.subsections) == 2
+    assert isinstance(tb.subsections[0], SubsectionBlock)
+    assert tb.subsections[0].heading == "3a: First subsection"
+    assert tb.subsections[1].heading == "3b: Second subsection"
+    assert len(tb.subsections[0].rows) == 1
+    assert len(tb.subsections[1].rows) == 1
+
+
+def test_parse_h3_without_subsections(tmp_path):
+    path = _write(tmp_path, H3_WITHOUT_SUBS_MD)
+    db = dashboard.parse(path)
+    assert len(db.tables) == 1
+    tb = db.tables[0]
+    assert tb.heading == "Plain Section"
+    assert len(tb.subsections) == 0
+    assert len(tb.rows) == 1

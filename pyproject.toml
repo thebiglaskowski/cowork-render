@@ -12,6 +12,7 @@ license = "MIT"
 authors = [{ name = "Joe Laskowski" }]
 dependencies = [
   "python-frontmatter>=1.0",
+  "markdown-it-py>=3.0",
 ]
 
 [project.scripts]

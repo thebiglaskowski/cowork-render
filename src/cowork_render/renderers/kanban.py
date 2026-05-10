@@ -12,7 +12,13 @@ from pathlib import Path
 
 import frontmatter
 
-from cowork_render.renderers._inline import render_inline_markdown as _render_card_body_markdown
+from cowork_render._markdown import render_inline as _ri
+
+
+def _render_card_body_markdown(body: str) -> str:
+    """Split on blank lines, wrap each paragraph in <p>, apply inline markdown."""
+    paragraphs = re.split(r'\n{2,}', body)
+    return "".join(f"<p>{_ri(p.strip())}</p>" for p in paragraphs if p.strip())
 
 
 @dataclass

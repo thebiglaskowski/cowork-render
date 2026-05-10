@@ -248,3 +248,18 @@ def test_articles_have_data_markdown_body(tmp_path):
     non_empty = [a for a in articles if a]
     # FIXTURE_MD has three cards with bodies: Body A., Body B., Body C.
     assert len(non_empty) == 3
+
+
+# --- v1.2 tests: render_inline protects code-spans ---
+
+def test_markdown_render_code_span_protects_link_inside():
+    result = kanban._render_card_body_markdown("`[text](path.md)`")
+    assert "<code>[text](path.md)</code>" in result
+    assert "<a href" not in result
+
+
+def test_markdown_render_inline_markers_still_work_outside_code():
+    result = kanban._render_card_body_markdown("**bold** and `code` and [link](url)")
+    assert "<strong>bold</strong>" in result
+    assert "<code>code</code>" in result
+    assert '<a href="url">link</a>' in result
