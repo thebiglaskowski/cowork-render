@@ -12,6 +12,8 @@ from pathlib import Path
 
 import frontmatter
 
+from cowork_render.renderers._inline import render_inline_markdown as _render_card_body_markdown
+
 
 @dataclass
 class Card:
@@ -221,22 +223,6 @@ def parse(source_path: Path) -> Board:
 def render(source_path: Path, options: dict | None = None) -> str:
     board = parse(source_path)
     return _render_html(board)
-
-
-def _render_card_body_markdown(body: str) -> str:
-    """Render inline markdown in card body text as HTML paragraphs."""
-    escaped = html.escape(body)
-    parts = []
-    for para in re.split(r"\n\n+", escaped):
-        text = para.strip()
-        if not text:
-            continue
-        text = re.sub(r'\*\*([^*]+?)\*\*', r'<strong>\1</strong>', text)
-        text = re.sub(r'\*(\S[^*]*?\S|\S)\*', r'<em>\1</em>', text)
-        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
-        text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
-        parts.append(f"<p>{text}</p>")
-    return "".join(parts)
 
 
 def _json_script_safe(value: str) -> str:
