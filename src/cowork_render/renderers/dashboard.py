@@ -11,7 +11,6 @@ from pathlib import Path
 import frontmatter
 
 from cowork_render._markdown import get_copy_button_js, render_block, render_inline
-from cowork_render.renderers._inline import _apply_inline
 from cowork_render.theme import get_theme_css
 
 
@@ -509,7 +508,7 @@ def _render_html(db: Dashboard) -> str:
 
 def _render_subsection(sub: SubsectionBlock, idx: int) -> str:
     heading_html = (
-        f'      <h3 class="subsection-heading">{_apply_inline(html.escape(sub.heading))}</h3>\n'
+        f'      <h3 class="subsection-heading">{render_inline(sub.heading)}</h3>\n'
         if sub.heading else ''
     )
     notes_html = (
@@ -534,7 +533,7 @@ def _render_subsection(sub: SubsectionBlock, idx: int) -> str:
 
 def _render_table_section(table: TableBlock, idx: int) -> str:
     heading_html = (
-        f'      <h2 class="section-heading">{_apply_inline(html.escape(table.heading))}</h2>\n'
+        f'      <h2 class="section-heading">{render_inline(table.heading)}</h2>\n'
         if table.heading else ''
     )
     notes_html = (
@@ -573,7 +572,7 @@ def _render_table_section(table: TableBlock, idx: int) -> str:
 
 def _render_prose_section(block: ProseBlock) -> str:
     heading_html = (
-        f'      <h2 class="section-heading">{_apply_inline(html.escape(block.heading))}</h2>\n'
+        f'      <h2 class="section-heading">{render_inline(block.heading)}</h2>\n'
         if block.heading else ''
     )
     body_html = render_block(block.body_md)

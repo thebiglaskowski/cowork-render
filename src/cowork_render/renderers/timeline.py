@@ -10,8 +10,7 @@ from pathlib import Path
 
 import frontmatter
 
-from cowork_render._markdown import get_copy_button_js
-from cowork_render.renderers._inline import render_inline_markdown
+from cowork_render._markdown import get_copy_button_js, render_block, render_inline
 from cowork_render.theme import get_theme_css
 
 # Matches H2–H4 headings with a YYYY-MM-DD — title date prefix.
@@ -68,6 +67,8 @@ header h1 { font-size: 1.6rem; color: var(--text-heading); margin-bottom: 0.25re
 .preamble-body { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
 .preamble-body p { margin: 0; }
 .preamble-body p + p { margin-top: 0.55rem; }
+.preamble-body pre { background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: var(--rounded-md); padding: 0.6rem 0.9rem; margin: 0.5rem 0; max-width: 100%; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+.preamble-body pre code { background: none; padding: 0; border-radius: 0; font-family: var(--font-mono-font-family); font-size: 0.88em; line-height: 1.55; color: var(--text-base); white-space: pre-wrap; word-wrap: break-word; }
 .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; position: sticky; top: 0; z-index: 5; background: var(--bg-base); padding: 0.5rem 0; }
 .filter-bar label { font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
 input[type="date"], input[type="search"] { background: var(--bg-input); color: var(--text-base); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: var(--font-mono-font-family); }
@@ -110,7 +111,7 @@ input[type="date"]:focus, input[type="search"]:focus { outline: 1px solid var(--
 .entry-prose a:visited { color: var(--link-visited); border-color: color-mix(in srgb, var(--link-visited) 35%, transparent); }
 footer { margin-top: 2rem; font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono-font-family); }
 .code-block-wrapper { position: relative; margin: 0.5rem 0; }
-.code-block-wrapper pre { margin: 0; }
+.code-block-wrapper pre { margin: 0; white-space: pre; word-wrap: normal; }
 .code-copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: var(--bg-surface-raised); color: var(--text-muted); border: 1px solid var(--border-subtle); border-radius: var(--rounded-sm); padding: 0.2rem 0.6rem; font-size: 0.75rem; font-family: var(--font-mono-font-family); cursor: pointer; opacity: 0; transition: opacity 0.15s ease, color 0.15s ease; }
 .code-block-wrapper:hover .code-copy-btn { opacity: 1; }
 .code-copy-btn:hover { color: var(--text-base); border-color: var(--border-emphasis); }
@@ -248,7 +249,7 @@ def _render_html(timeline: Timeline) -> str:
 
     preamble_html = ""
     if timeline.preamble_md:
-        preamble_body = render_inline_markdown(timeline.preamble_md)
+        preamble_body = render_block(timeline.preamble_md)
         preamble_html = (
             '\n    <details class="preamble" open>\n'
             '      <summary>Preamble &amp; Format</summary>\n'
@@ -311,7 +312,7 @@ def _render_entry(entry: Entry) -> str:
 
     prose_html = ""
     if entry.prose_md:
-        prose_html = f'\n          <div class="entry-prose">{render_inline_markdown(entry.prose_md)}</div>'
+        prose_html = f'\n          <div class="entry-prose">{render_block(entry.prose_md)}</div>'
 
     return (
         f'        <article class="entry" data-date="{date_esc}">\n'
@@ -327,7 +328,7 @@ def _render_entry(entry: Entry) -> str:
 
 def _render_field(f: Field) -> str:
     name_esc = html.escape(f.name)
-    value_html = render_inline_markdown(f.value_md) if f.value_md else ""
+    value_html = render_inline(f.value_md) if f.value_md else ""
     return (
         f'\n            <div class="field">'
         f'<span class="field-label">{name_esc}</span>'
