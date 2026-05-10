@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import html as _html
 import re
 
 from markdown_it import MarkdownIt
+
+from cowork_render.diagrams import render_diagram
 
 # Inline-only renderer — bold, italic, code, links, bare-URL auto-linkify.
 # No block elements (no <p>, no lists, no code blocks, no blockquotes).
@@ -16,11 +19,27 @@ _INLINE = MarkdownIt("zero", {"linkify": True}).enable(
 # Renders paragraphs, lists, code blocks, blockquotes, headings, and bare URLs.
 _BLOCK = MarkdownIt("commonmark", {"html": False, "breaks": False, "linkify": True}).enable("linkify")
 
+# Captures lang attribute (group 1) and content (group 2) for diagram detection.
+_DIAGRAM_CODE_BLOCK_RE = re.compile(
+    r'<pre><code(?:\s+class="language-([^"]*)")?>(.*?)</code></pre>',
+    re.DOTALL,
+)
+
 # Wraps every <pre><code> block output by render_block with a copy-button container.
 _CODE_BLOCK_RE = re.compile(
     r'(<pre><code(?:\s+class="[^"]*")?>.*?</code></pre>)',
     re.DOTALL,
 )
+
+
+def _render_diagrams_in_html(html_str: str) -> str:
+    """Walk rendered HTML, replace <pre><code> blocks with diagram HTML where detectable."""
+    def replace(match: re.Match) -> str:
+        lang = match.group(1) or ''
+        code = _html.unescape(match.group(2))
+        rendered = render_diagram(code, lang)
+        return rendered if rendered else match.group(0)
+    return _DIAGRAM_CODE_BLOCK_RE.sub(replace, html_str)
 
 
 def _wrap_code_blocks_with_copy(html: str) -> str:
@@ -56,7 +75,10 @@ def render_block(text: str) -> str:
     """
     if not text:
         return ""
-    return _wrap_code_blocks_with_copy(_BLOCK.render(text))
+    html_str = _BLOCK.render(text)
+    html_str = _render_diagrams_in_html(html_str)
+    html_str = _wrap_code_blocks_with_copy(html_str)
+    return html_str
 
 
 def get_copy_button_js() -> str:

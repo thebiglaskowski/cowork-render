@@ -71,6 +71,137 @@ def _kebab_case(camel: str) -> str:
     return "".join(result)
 
 
+def get_diagram_css() -> str:
+    """Return embedded CSS for diagram rendering (tree, flow-v, flow-h).
+
+    Renderers concatenate this with get_theme_css() and their renderer-specific CSS.
+    """
+    return """\
+.diagram-tree-wrap {
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--rounded-lg);
+  overflow-x: auto;
+}
+.diagram-tree, .diagram-tree ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.diagram-tree ul {
+  padding-left: 1.5rem;
+  position: relative;
+}
+.diagram-tree li {
+  position: relative;
+  padding: 0.35rem 0 0.35rem 1.5rem;
+  color: var(--text-base);
+  font-family: var(--font-body-font-family);
+  line-height: 1.5;
+}
+.diagram-tree > li {
+  padding-left: 0;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+.diagram-tree li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1em;
+  width: 1.1rem;
+  border-top: 1px solid var(--border-emphasis);
+}
+.diagram-tree > li::before { display: none; }
+.diagram-tree li::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--border-emphasis);
+}
+.diagram-tree > li::after { display: none; }
+.diagram-tree li:last-child::after {
+  height: 1em;
+}
+.diagram-flow-v {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--rounded-lg);
+}
+.diagram-flow-v .flow-step {
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--rounded-md);
+  padding: 0.65rem 1.5rem;
+  font-family: var(--font-body-font-family);
+  font-size: 0.95rem;
+  color: var(--text-base);
+  text-align: center;
+  min-width: 180px;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.diagram-flow-v .flow-step + .flow-step {
+  margin-top: 2rem;
+}
+.diagram-flow-v .flow-step + .flow-step::before {
+  content: "";
+  position: absolute;
+  top: -1.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 1.5rem;
+  background: var(--border-emphasis);
+}
+.diagram-flow-v .flow-step + .flow-step::after {
+  content: "";
+  position: absolute;
+  top: -0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--border-emphasis);
+}
+.diagram-flow-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--rounded-lg);
+}
+.diagram-flow-h .flow-step {
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--rounded-md);
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-body-font-family);
+  font-size: 0.9rem;
+  color: var(--text-base);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.diagram-flow-h .flow-arrow {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-family: var(--font-mono-font-family);
+  user-select: none;
+}"""
+
+
 def color(token: str) -> str:
     """Return the hex value for a named color token. Raises KeyError if missing."""
     return COLORS[token]

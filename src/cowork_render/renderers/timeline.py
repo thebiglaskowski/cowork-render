@@ -11,7 +11,7 @@ from pathlib import Path
 import frontmatter
 
 from cowork_render._markdown import get_copy_button_js, render_block, render_inline
-from cowork_render.theme import get_theme_css
+from cowork_render.theme import get_diagram_css, get_theme_css
 
 # Matches H2–H4 headings with a YYYY-MM-DD — title date prefix.
 # Compatible with cowork-graph's decision-heading pattern.
@@ -267,6 +267,7 @@ def _render_html(timeline: Timeline) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title_esc}</title>
   <style>{get_theme_css()}
+{get_diagram_css()}
 {_CSS}</style>
 </head>
 <body>

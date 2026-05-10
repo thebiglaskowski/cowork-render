@@ -13,7 +13,7 @@ from pathlib import Path
 import frontmatter
 
 from cowork_render._markdown import get_copy_button_js, render_inline as _ri
-from cowork_render.theme import get_theme_css
+from cowork_render.theme import get_diagram_css, get_theme_css
 
 
 def _render_card_body_markdown(body: str) -> str:
@@ -260,6 +260,7 @@ def _render_html(board: Board) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title_esc}</title>
   <style>{get_theme_css()}
+{get_diagram_css()}
 {_CSS}</style>
 </head>
 <body>
