@@ -1,4 +1,4 @@
-"""Dashboard renderer — produces sortable filterable HTML table from a markdown table."""
+"""Dashboard renderer — produces sortable filterable HTML from markdown tables."""
 
 from __future__ import annotations
 
@@ -34,6 +34,14 @@ class Column:
 
 
 @dataclass
+class TableBlock:
+    heading: str
+    notes_md: str
+    columns: list[Column]
+    rows: list[list[str]]
+
+
+@dataclass
 class Section:
     heading: str
     body_md: str
@@ -44,8 +52,7 @@ class Dashboard:
     title: str
     subtitle: str
     source_path: Path
-    columns: list[Column]
-    rows: list[list[str]]
+    tables: list[TableBlock]
     preamble_md: str
     post_table_sections: list[Section]
 
@@ -61,11 +68,23 @@ header h1 { font-size: 1.6rem; color: #f0f3f6; margin-bottom: 0.25rem; }
 .preamble { background: #1f2128; border: 1px solid #2d3138; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #8b949e; line-height: 1.55; }
 .preamble p { margin: 0; }
 .preamble p + p { margin-top: 0.5rem; }
-.filter-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.meta-block { border-left: 3px solid #2d3138; padding-left: 0.75rem; margin: 0.25rem 0; color: #8b949e; font-size: 0.82rem; line-height: 1.65; }
+.meta-block a { color: #58a6ff; text-decoration: none; }
+.meta-block a:hover { text-decoration: underline; }
+.block-heading { color: #c9d1d9; font-size: 0.9rem; margin: 0.5rem 0 0.25rem; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.filter-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
 input[type="search"] { background: #1f2128; color: #e1e4e8; border: 1px solid #2d3138; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.82rem; font-family: 'SF Mono', Menlo, Consolas, monospace; width: 240px; }
 input[type="search"]:focus { outline: 1px solid #58a6ff; border-color: #58a6ff; }
 .match-count { font-size: 0.78rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
-.table-wrap { overflow-x: auto; border: 1px solid #2d3138; border-radius: 6px; margin-bottom: 1.25rem; }
+.table-section { margin-bottom: 2rem; }
+.section-heading { font-size: 0.95rem; font-weight: 600; color: #c9d1d9; margin-bottom: 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid #2d3138; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.section-notes { font-size: 0.83rem; color: #8b949e; margin-bottom: 0.65rem; line-height: 1.5; }
+.section-notes p { margin: 0; }
+.section-notes p + p { margin-top: 0.4rem; }
+.section-notes a { color: #58a6ff; text-decoration: none; }
+.section-notes a:hover { text-decoration: underline; }
+.section-notes code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.88em; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.table-wrap { overflow-x: auto; border: 1px solid #2d3138; border-radius: 6px; }
 table.dashboard { border-collapse: collapse; width: 100%; }
 thead { position: sticky; top: 0; z-index: 1; }
 thead tr { background: #1f2128; }
@@ -77,104 +96,96 @@ tbody tr { border-bottom: 1px solid #2d3138; }
 tbody tr:last-child { border-bottom: none; }
 tbody tr:hover { background: #1f2128; }
 td { padding: 0.45rem 0.75rem; font-size: 0.85rem; vertical-align: middle; }
-/* pill helper — shared by boolean and status cells */
+td code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.82em; font-family: 'SF Mono', Menlo, Consolas, monospace; word-break: break-all; }
+td a { color: #58a6ff; text-decoration: none; }
+td a:hover { text-decoration: underline; }
 .pill { display: inline-block; padding: 0.1em 0.5em; border-radius: 10px; font-size: 0.8em; font-weight: 600; line-height: 1.4; }
-/* boolean */
 .cell-bool-yes { text-align: center; }
 .cell-bool-yes .pill { background: #3fb950; color: #fff; }
 .cell-bool-no { text-align: center; }
 .cell-bool-no .pill { background: #f85149; color: #fff; }
-/* date — color by freshness, mono font */
 .cell-date-fresh { color: #3fb950; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82em; }
 .cell-date-recent { color: #d29922; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82em; }
 .cell-date-aging { color: #e3b341; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82em; }
 .cell-date-stale { color: #f85149; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82em; }
-/* status */
 .cell-status-green .pill { background: #3fb950; color: #fff; }
 .cell-status-gray .pill { background: #6e7681; color: #fff; }
 .cell-status-red .pill { background: #f85149; color: #fff; }
 .cell-status-orange .pill { background: #d29922; color: #fff; }
-/* number */
 .cell-number { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82em; text-align: right; }
-/* commentary panels */
 .commentary-section { background: #1f2128; border: 1px solid #2d3138; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
 .commentary-section summary { color: #f0f3f6; cursor: pointer; font-size: 0.9rem; user-select: none; }
 .commentary-body { margin-top: 0.75rem; font-size: 0.85rem; color: #8b949e; line-height: 1.55; }
 .commentary-body p { margin: 0; }
 .commentary-body p + p { margin-top: 0.5rem; }
+.commentary-body a { color: #58a6ff; text-decoration: none; }
+.commentary-body a:hover { text-decoration: underline; }
+.commentary-body code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.88em; font-family: 'SF Mono', Menlo, Consolas, monospace; }
 footer { margin-top: 1.5rem; font-size: 0.75rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
 @media (max-width: 600px) { .table-wrap { border: none; border-radius: 0; } }"""
 
 _JS = """\
-const tbody = document.querySelector('.dashboard tbody');
-const allRows = Array.from(tbody.querySelectorAll('tr'));
-let sortCol = -1, sortDir = 0;
-
 const STATUS_ORDER = {active:0,ok:0,done:0,shipped:0,pending:1,queued:1,parked:1,deferred:1,warning:2,blocked:3,error:3,broken:3};
 
 function boolVal(v) {
-  if (/^[\\u2713\\u2714]$|^yes$|^true$/i.test(v)) return 1;
-  if (/^[\\u2717\\u2718]$|^no$|^false$/i.test(v)) return 0;
+  if (/^[✓✔]$|^yes$|^true$/i.test(v)) return 1;
+  if (/^[✗✘]$|^no$|^false$/i.test(v)) return 0;
   return -1;
 }
 
-function cellText(row, col) {
-  const td = row.querySelectorAll('td')[col];
-  return td ? td.textContent.trim() : '';
-}
-
 function compareRows(a, b, col, type, dir) {
-  const av = cellText(a, col), bv = cellText(b, col);
+  const av = a.querySelectorAll('td')[col]?.textContent.trim() ?? '';
+  const bv = b.querySelectorAll('td')[col]?.textContent.trim() ?? '';
   let cmp = 0;
-  if (type === 'number') {
-    cmp = parseFloat(av.replace(/[$,%]/g, '') || '0') - parseFloat(bv.replace(/[$,%]/g, '') || '0');
-  } else if (type === 'date') {
-    cmp = av.localeCompare(bv);
-  } else if (type === 'boolean') {
-    cmp = boolVal(av) - boolVal(bv);
-  } else if (type === 'status') {
-    cmp = (STATUS_ORDER[av.toLowerCase()] ?? 99) - (STATUS_ORDER[bv.toLowerCase()] ?? 99);
-  } else {
-    cmp = av.localeCompare(bv);
-  }
+  if (type === 'number') cmp = parseFloat(av.replace(/[$,%]/g,'') || '0') - parseFloat(bv.replace(/[$,%]/g,'') || '0');
+  else if (type === 'date') cmp = av.localeCompare(bv);
+  else if (type === 'boolean') cmp = boolVal(av) - boolVal(bv);
+  else if (type === 'status') cmp = (STATUS_ORDER[av.toLowerCase()] ?? 99) - (STATUS_ORDER[bv.toLowerCase()] ?? 99);
+  else cmp = av.localeCompare(bv);
   return cmp * dir;
 }
 
-document.querySelectorAll('th.sortable').forEach(th => {
-  th.addEventListener('click', () => {
-    const col = parseInt(th.dataset.col);
-    const type = th.dataset.type;
-    if (sortCol === col) {
-      sortDir = sortDir === 1 ? -1 : sortDir === -1 ? 0 : 1;
-    } else {
-      sortCol = col;
-      sortDir = 1;
-    }
-    document.querySelectorAll('.sort-chevron').forEach(c => c.textContent = '');
-    const chevron = th.querySelector('.sort-chevron');
-    if (chevron) chevron.textContent = sortDir === 1 ? ' \\u25b2' : sortDir === -1 ? ' \\u25bc' : '';
-    const rows = sortDir === 0 ? allRows : [...allRows].sort((a, b) => compareRows(a, b, col, type, sortDir));
-    rows.forEach(r => tbody.appendChild(r));
-    applyFilter();
+document.querySelectorAll('table.dashboard').forEach(table => {
+  const tbody = table.querySelector('tbody');
+  let sortCol = -1, sortDir = 0;
+
+  table.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = parseInt(th.dataset.col);
+      const type = th.dataset.type;
+      if (sortCol === col) {
+        sortDir = sortDir === 1 ? -1 : sortDir === -1 ? 0 : 1;
+      } else {
+        sortCol = col; sortDir = 1;
+      }
+      table.querySelectorAll('.sort-chevron').forEach(c => c.textContent = '');
+      const chevron = th.querySelector('.sort-chevron');
+      if (chevron) chevron.textContent = sortDir === 1 ? ' ▲' : sortDir === -1 ? ' ▼' : '';
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const sorted = sortDir === 0 ? rows : [...rows].sort((a, b) => compareRows(a, b, col, type, sortDir));
+      sorted.forEach(r => tbody.appendChild(r));
+      applyFilter();
+    });
   });
 });
 
 const filterInput = document.getElementById('filter');
 function applyFilter() {
   const q = filterInput.value.toLowerCase();
-  let visible = 0;
-  allRows.forEach(row => {
+  let total = 0, visible = 0;
+  document.querySelectorAll('table.dashboard tbody tr').forEach(row => {
     const match = !q || row.textContent.toLowerCase().includes(q);
     row.style.display = match ? '' : 'none';
+    total++;
     if (match) visible++;
   });
-  document.querySelector('.match-count').textContent = visible + ' of ' + allRows.length + ' rows';
+  document.querySelector('.match-count').textContent = visible + ' of ' + total + ' rows';
 }
-filterInput.addEventListener('input', applyFilter);"""
+filterInput.addEventListener('input', applyFilter);
+applyFilter();"""
 
 
 def _detect_column_type(values: list[str]) -> str:
-    """Return one of 'text' | 'number' | 'date' | 'boolean' | 'status' using 80% match rule."""
     non_empty = [v.strip() for v in values if v.strip()]
     if not non_empty:
         return 'text'
@@ -226,29 +237,103 @@ def _cell_class(value: str, col_type: str) -> str:
     return 'cell-text'
 
 
-def _extract_table(content: str):
-    """Return (table_lines, preamble_text, after_text), or (None, None, None) if no table."""
+def _inline_only(text: str) -> str:
+    """Apply inline markdown to already-HTML-escaped text (no paragraph wrapping)."""
+    text = re.sub(r'\*\*([^*]+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(\S[^*]*?\S|\S)\*', r'<em>\1</em>', text)
+    text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+    return text
+
+
+def _render_block_md(md: str) -> str:
+    """Block-level renderer for preamble: strips H1, converts H2-H4, renders blockquotes."""
+    lines = md.splitlines()
+    parts = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r'^# ', line):
+            i += 1
+            continue
+        hm = re.match(r'^(#{2,4}) (.+)', line)
+        if hm:
+            level = len(hm.group(1))
+            text = _inline_only(html.escape(hm.group(2).strip()))
+            parts.append(f'<h{level} class="block-heading">{text}</h{level}>')
+            i += 1
+            continue
+        if line.startswith('>'):
+            bq_lines = []
+            while i < len(lines) and lines[i].startswith('>'):
+                content = lines[i][1:].lstrip()
+                if content:
+                    bq_lines.append(content)
+                i += 1
+            inner = '<br>'.join(_inline_only(html.escape(ln)) for ln in bq_lines)
+            if inner:
+                parts.append(f'<blockquote class="meta-block">{inner}</blockquote>')
+            continue
+        if not line.strip():
+            i += 1
+            continue
+        para_lines = []
+        while i < len(lines) and lines[i].strip() and not lines[i].startswith('>') and not re.match(r'^#{1,4} ', lines[i]):
+            para_lines.append(lines[i])
+            i += 1
+        if para_lines:
+            parts.append(render_inline_markdown('\n'.join(para_lines)))
+    return ''.join(parts)
+
+
+def _extract_all_tables(content: str):
+    """Extract all markdown tables with their section headings and intro notes.
+
+    Returns (tables, preamble, after) where tables is a list of
+    (heading, notes_md, table_lines) tuples. Preamble is content before the
+    first H2 heading; after is content following the last table.
+    """
     lines = content.splitlines()
-    table_start = table_end = None
-    for i, line in enumerate(lines):
+
+    first_h2_idx = next((i for i, ln in enumerate(lines) if re.match(r'^## ', ln)), None)
+    if first_h2_idx is not None:
+        preamble = '\n'.join(lines[:first_h2_idx]).strip()
+        body = lines[first_h2_idx:]
+    else:
+        preamble = ''
+        body = lines
+
+    tables: list[tuple[str, str, list[str]]] = []
+    last_heading = ''
+    last_heading_content_start = 0
+    last_table_end = 0
+
+    i = 0
+    while i < len(body):
+        line = body[i]
+        hm = re.match(r'^(#{2,4}) (.+)', line)
+        if hm:
+            last_heading = hm.group(2).strip()
+            last_heading_content_start = i + 1
+            i += 1
+            continue
         if line.strip().startswith('|'):
-            if table_start is None:
-                table_start = i
-            table_end = i
-        elif table_start is not None:
-            break
-    if table_start is None:
-        return None, None, None
-    return (
-        lines[table_start : table_end + 1],
-        "\n".join(lines[:table_start]),
-        "\n".join(lines[table_end + 1 :]),
-    )
+            notes = '\n'.join(body[last_heading_content_start:i]).strip()
+            table_start = i
+            while i < len(body) and body[i].strip().startswith('|'):
+                i += 1
+            tables.append((last_heading, notes, body[table_start:i]))
+            last_table_end = i
+            last_heading = ''
+            last_heading_content_start = i
+            continue
+        i += 1
+
+    after = '\n'.join(body[last_table_end:]).strip() if tables else ''
+    return tables, preamble, after
 
 
 def _parse_table_rows(table_lines: list[str]):
-    """Return (headers, data_rows) from a list of raw table lines."""
-
     def split_row(line: str) -> list[str]:
         return [cell.strip() for cell in line.strip().strip('|').split('|')]
 
@@ -280,75 +365,81 @@ def _extract_post_sections(after: str) -> list[Section]:
 
 
 def parse(source_path: Path) -> Dashboard:
-    """Parse a markdown source file with a primary table into a Dashboard."""
-    raw_text = source_path.read_text(encoding="utf-8")
+    raw_text = source_path.read_text(encoding='utf-8')
     post = frontmatter.loads(raw_text)
 
-    shape = post.metadata.get("render-html")
+    shape = post.metadata.get('render-html')
     if shape is None:
-        raise ValueError(f"{source_path}: missing 'render-html' frontmatter signal")
-    if shape != "dashboard":
-        raise ValueError(f"{source_path}: expected render-html: dashboard, got: {shape!r}")
+        raise ValueError(f'{source_path}: missing \'render-html\' frontmatter signal')
+    if shape != 'dashboard':
+        raise ValueError(f'{source_path}: expected render-html: dashboard, got: {shape!r}')
 
-    options = post.metadata.get("render-html-options") or {}
-    title = str(options.get("title") or source_path.stem)
-    subtitle = str(options.get("subtitle") or "")
-    key_column: str | None = options.get("key_column")
-    column_types_override: dict[str, str] = dict(options.get("column_types") or {})
+    options = post.metadata.get('render-html-options') or {}
+    title = str(options.get('title') or source_path.stem)
+    subtitle = str(options.get('subtitle') or '')
+    key_column: str | None = options.get('key_column')
+    column_types_override: dict[str, str] = dict(options.get('column_types') or {})
 
-    table_lines, preamble_text, after_text = _extract_table(post.content)
-    if table_lines is None:
-        raise ValueError(f"{source_path}: dashboard requires a primary markdown table")
+    tables_raw, preamble_text, after_text = _extract_all_tables(post.content)
+    if not tables_raw:
+        raise ValueError(f'{source_path}: dashboard requires a primary markdown table')
 
-    headers, data_rows = _parse_table_rows(table_lines)
-    if not headers:
-        raise ValueError(f"{source_path}: dashboard requires a primary markdown table")
+    table_blocks: list[TableBlock] = []
+    for heading, notes_md, table_lines in tables_raw:
+        headers, data_rows = _parse_table_rows(table_lines)
+        if not headers:
+            continue
+        columns = []
+        for i, name in enumerate(headers):
+            if name in column_types_override:
+                col_type = str(column_types_override[name])
+            else:
+                col_values = [row[i] if i < len(row) else '' for row in data_rows]
+                col_type = _detect_column_type(col_values)
+            is_key = (name == key_column) if key_column else (i == 0)
+            columns.append(Column(name=name, detected_type=col_type, is_key=is_key))
+        table_blocks.append(TableBlock(
+            heading=heading,
+            notes_md=notes_md,
+            columns=columns,
+            rows=data_rows,
+        ))
 
-    columns = []
-    for i, name in enumerate(headers):
-        if name in column_types_override:
-            col_type = str(column_types_override[name])
-        else:
-            col_values = [row[i] if i < len(row) else "" for row in data_rows]
-            col_type = _detect_column_type(col_values)
-        is_key = (name == key_column) if key_column else (i == 0)
-        columns.append(Column(name=name, detected_type=col_type, is_key=is_key))
+    if not table_blocks:
+        raise ValueError(f'{source_path}: dashboard requires a primary markdown table')
 
     return Dashboard(
         title=title,
         subtitle=subtitle,
         source_path=source_path,
-        columns=columns,
-        rows=data_rows,
-        preamble_md=preamble_text.strip() if preamble_text else "",
+        tables=table_blocks,
+        preamble_md=preamble_text,
         post_table_sections=_extract_post_sections(after_text) if after_text else [],
     )
 
 
 def render(source_path: Path, options: dict | None = None) -> str:
-    """Render a Dashboard as a self-contained HTML string."""
     return _render_html(parse(source_path))
 
 
-def _render_html(dashboard: Dashboard) -> str:
-    render_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    title_esc = html.escape(dashboard.title)
-    source_esc = html.escape(str(dashboard.source_path))
-    n = len(dashboard.rows)
+def _render_html(db: Dashboard) -> str:
+    render_date = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+    title_esc = html.escape(db.title)
+    source_esc = html.escape(str(db.source_path))
+    total_rows = sum(len(t.rows) for t in db.tables)
+    n_tables = len(db.tables)
 
     subtitle_html = (
-        f'      <div class="subtitle">{html.escape(dashboard.subtitle)}</div>\n'
-        if dashboard.subtitle
-        else ""
+        f'      <div class="subtitle">{html.escape(db.subtitle)}</div>\n'
+        if db.subtitle else ''
     )
     preamble_html = (
-        f'\n    <section class="preamble">{render_inline_markdown(dashboard.preamble_md)}</section>'
-        if dashboard.preamble_md
-        else ""
+        f'\n    <section class="preamble">{_render_block_md(db.preamble_md)}</section>'
+        if db.preamble_md else ''
     )
-    thead = _render_thead(dashboard.columns)
-    tbody_html = _render_tbody(dashboard.columns, dashboard.rows)
-    sections_html = "".join(_render_section(s) for s in dashboard.post_table_sections)
+    meta_detail = f'{n_tables} tables &middot; {total_rows} rows' if n_tables > 1 else f'{total_rows} rows'
+    tables_html = '\n'.join(_render_table_section(t, idx) for idx, t in enumerate(db.tables))
+    sections_html = ''.join(_render_section(s) for s in db.post_table_sections)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -362,22 +453,13 @@ def _render_html(dashboard: Dashboard) -> str:
   <div class="container">
     <header>
       <h1>{title_esc}</h1>
-{subtitle_html}      <div class="meta">{source_esc} &middot; rendered {render_date} &middot; {n} rows</div>
+{subtitle_html}      <div class="meta">{source_esc} &middot; rendered {render_date} &middot; {meta_detail}</div>
     </header>{preamble_html}
     <div class="filter-bar">
       <input type="search" id="filter" placeholder="Filter rows...">
-      <span class="match-count">{n} rows</span>
+      <span class="match-count">{total_rows} rows</span>
     </div>
-    <div class="table-wrap">
-      <table class="dashboard">
-        <thead>
-{thead}
-        </thead>
-        <tbody>
-{tbody_html}
-        </tbody>
-      </table>
-    </div>
+{tables_html}
 {sections_html}    <footer>generated by cowork-render dashboard v1 &middot; {render_date}</footer>
   </div>
   <script>{_JS}</script>
@@ -385,25 +467,51 @@ def _render_html(dashboard: Dashboard) -> str:
 </html>"""
 
 
+def _render_table_section(table: TableBlock, idx: int) -> str:
+    heading_html = (
+        f'      <h2 class="section-heading">{html.escape(table.heading)}</h2>\n'
+        if table.heading else ''
+    )
+    notes_html = (
+        f'      <div class="section-notes">{render_inline_markdown(table.notes_md)}</div>\n'
+        if table.notes_md else ''
+    )
+    thead = _render_thead(table.columns)
+    tbody_html = _render_tbody(table.columns, table.rows)
+
+    return (
+        f'    <section class="table-section">\n'
+        f'{heading_html}'
+        f'{notes_html}'
+        f'      <div class="table-wrap">\n'
+        f'        <table class="dashboard" data-table-index="{idx}">\n'
+        f'          <thead>\n{thead}\n          </thead>\n'
+        f'          <tbody>\n{tbody_html}\n          </tbody>\n'
+        f'        </table>\n'
+        f'      </div>\n'
+        f'    </section>'
+    )
+
+
 def _render_thead(columns: list[Column]) -> str:
-    cells = "".join(
+    cells = ''.join(
         f'            <th data-col="{i}" data-type="{col.detected_type}" class="sortable">'
         f'{html.escape(col.name)} <span class="sort-chevron"></span></th>\n'
         for i, col in enumerate(columns)
     )
-    return f"          <tr>\n{cells}          </tr>"
+    return f'          <tr>\n{cells}          </tr>'
 
 
 def _render_tbody(columns: list[Column], rows: list[list[str]]) -> str:
     if not rows:
         n = len(columns)
         return f'          <tr><td colspan="{n}" style="text-align:center;color:#8b949e;padding:1rem;">No data</td></tr>'
-    return "\n".join(_render_row(columns, row) for row in rows)
+    return '\n'.join(_render_row(columns, row) for row in rows)
 
 
 def _render_row(columns: list[Column], row: list[str]) -> str:
-    cells = "".join(_render_cell(col, row[i] if i < len(row) else "") for i, col in enumerate(columns))
-    return f"          <tr>\n{cells}          </tr>"
+    cells = ''.join(_render_cell(col, row[i] if i < len(row) else '') for i, col in enumerate(columns))
+    return f'          <tr>\n{cells}          </tr>'
 
 
 def _render_cell(col: Column, value: str) -> str:
@@ -413,13 +521,13 @@ def _render_cell(col: Column, value: str) -> str:
     if cls.startswith('cell-bool-') or cls.startswith('cell-status-'):
         content = f'<span class="pill">{value_esc}</span>'
     else:
-        content = value_esc
+        content = _inline_only(value_esc)
     return f'            <td class="{cls}" data-cell="{name_esc}">{content}</td>\n'
 
 
 def _render_section(section: Section) -> str:
     heading_esc = html.escape(section.heading)
-    body_html = render_inline_markdown(section.body_md) if section.body_md else ""
+    body_html = render_inline_markdown(section.body_md) if section.body_md else ''
     return (
         f'    <details class="commentary-section" open>\n'
         f'      <summary>{heading_esc}</summary>\n'
