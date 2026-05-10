@@ -10,7 +10,7 @@ from pathlib import Path
 
 import frontmatter
 
-from cowork_render.renderers._inline import render_inline_markdown
+from cowork_render.renderers._inline import _apply_inline, render_inline_markdown
 
 
 _BOOLEAN_RE = re.compile(r'^[✓✗✔✘]$|^(?:yes|no|true|false)$', re.IGNORECASE)
@@ -42,9 +42,10 @@ class TableBlock:
 
 
 @dataclass
-class Section:
+class ProseBlock:
     heading: str
     body_md: str
+
 
 
 @dataclass
@@ -52,9 +53,9 @@ class Dashboard:
     title: str
     subtitle: str
     source_path: Path
-    tables: list[TableBlock]
+    tables: list[TableBlock]           # table blocks only, for test access
+    blocks: list                       # ordered: TableBlock | ProseBlock
     preamble_md: str
-    post_table_sections: list[Section]
 
 
 _CSS = """\
@@ -84,6 +85,10 @@ input[type="search"]:focus { outline: 1px solid #58a6ff; border-color: #58a6ff; 
 .section-notes a { color: #58a6ff; text-decoration: none; }
 .section-notes a:hover { text-decoration: underline; }
 .section-notes code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.88em; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.section-notes ul, .section-notes ol { padding-left: 1.5rem; margin: 0.35rem 0; }
+.section-notes li { margin-bottom: 0.2rem; line-height: 1.5; }
+.section-notes pre { background: #16161a; border: 1px solid #2d3138; border-radius: 4px; padding: 0.5rem 0.75rem; overflow-x: auto; margin: 0.35rem 0; }
+.section-notes pre code { background: none; padding: 0; color: #8b949e; border-radius: 0; }
 .table-wrap { overflow-x: auto; border: 1px solid #2d3138; border-radius: 6px; }
 table.dashboard { border-collapse: collapse; width: 100%; }
 thead { position: sticky; top: 0; z-index: 1; }
@@ -121,6 +126,8 @@ td a:hover { text-decoration: underline; }
 .commentary-body a { color: #58a6ff; text-decoration: none; }
 .commentary-body a:hover { text-decoration: underline; }
 .commentary-body code { background: #16161a; color: #79c0ff; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.88em; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.commentary-body ul, .commentary-body ol { padding-left: 1.5rem; margin: 0.4rem 0; }
+.commentary-body li { margin-bottom: 0.25rem; font-size: 0.85rem; line-height: 1.5; }
 footer { margin-top: 1.5rem; font-size: 0.75rem; color: #8b949e; font-family: 'SF Mono', Menlo, Consolas, monospace; }
 @media (max-width: 600px) { .table-wrap { border: none; border-radius: 0; } }"""
 
@@ -237,13 +244,6 @@ def _cell_class(value: str, col_type: str) -> str:
     return 'cell-text'
 
 
-def _inline_only(text: str) -> str:
-    """Apply inline markdown to already-HTML-escaped text (no paragraph wrapping)."""
-    text = re.sub(r'\*\*([^*]+?)\*\*', r'<strong>\1</strong>', text)
-    text = re.sub(r'\*(\S[^*]*?\S|\S)\*', r'<em>\1</em>', text)
-    text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
-    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
-    return text
 
 
 def _render_block_md(md: str) -> str:
@@ -259,7 +259,7 @@ def _render_block_md(md: str) -> str:
         hm = re.match(r'^(#{2,4}) (.+)', line)
         if hm:
             level = len(hm.group(1))
-            text = _inline_only(html.escape(hm.group(2).strip()))
+            text = _apply_inline(html.escape(hm.group(2).strip()))
             parts.append(f'<h{level} class="block-heading">{text}</h{level}>')
             i += 1
             continue
@@ -270,7 +270,7 @@ def _render_block_md(md: str) -> str:
                 if content:
                     bq_lines.append(content)
                 i += 1
-            inner = '<br>'.join(_inline_only(html.escape(ln)) for ln in bq_lines)
+            inner = '<br>'.join(_apply_inline(html.escape(ln)) for ln in bq_lines)
             if inner:
                 parts.append(f'<blockquote class="meta-block">{inner}</blockquote>')
             continue
@@ -287,11 +287,12 @@ def _render_block_md(md: str) -> str:
 
 
 def _extract_all_tables(content: str):
-    """Extract all markdown tables with their section headings and intro notes.
+    """Extract all markdown tables and prose-only sections in document order.
 
-    Returns (tables, preamble, after) where tables is a list of
-    (heading, notes_md, table_lines) tuples. Preamble is content before the
-    first H2 heading; after is content following the last table.
+    Returns (ordered_items, preamble, after). ordered_items is a list where
+    each entry is either ('table', heading, notes_md, table_lines) or
+    ('prose', heading, body_md) for headings with content but no table.
+    Preamble is content before the first H2; after is content after the last table.
     """
     lines = content.splitlines()
 
@@ -303,16 +304,19 @@ def _extract_all_tables(content: str):
         preamble = ''
         body = lines
 
-    tables: list[tuple[str, str, list[str]]] = []
+    ordered_items: list[tuple] = []
     last_heading = ''
     last_heading_content_start = 0
-    last_table_end = 0
 
     i = 0
     while i < len(body):
         line = body[i]
         hm = re.match(r'^(#{2,4}) (.+)', line)
         if hm:
+            if last_heading:
+                orphan = '\n'.join(body[last_heading_content_start:i]).strip()
+                if orphan:
+                    ordered_items.append(('prose', last_heading, orphan))
             last_heading = hm.group(2).strip()
             last_heading_content_start = i + 1
             i += 1
@@ -322,15 +326,18 @@ def _extract_all_tables(content: str):
             table_start = i
             while i < len(body) and body[i].strip().startswith('|'):
                 i += 1
-            tables.append((last_heading, notes, body[table_start:i]))
-            last_table_end = i
+            ordered_items.append(('table', last_heading, notes, body[table_start:i]))
             last_heading = ''
             last_heading_content_start = i
             continue
         i += 1
 
-    after = '\n'.join(body[last_table_end:]).strip() if tables else ''
-    return tables, preamble, after
+    if last_heading:
+        orphan = '\n'.join(body[last_heading_content_start:]).strip()
+        if orphan:
+            ordered_items.append(('prose', last_heading, orphan))
+
+    return ordered_items, preamble
 
 
 def _parse_table_rows(table_lines: list[str]):
@@ -353,16 +360,6 @@ def _parse_table_rows(table_lines: list[str]):
     return headers, data_rows
 
 
-def _extract_post_sections(after: str) -> list[Section]:
-    sections = []
-    h2_re = re.compile(r'^## (.+)$', re.MULTILINE)
-    matches = list(h2_re.finditer(after))
-    for i, m in enumerate(matches):
-        body_start = m.end()
-        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(after)
-        sections.append(Section(heading=m.group(1).strip(), body_md=after[body_start:body_end].strip()))
-    return sections
-
 
 def parse(source_path: Path) -> Dashboard:
     raw_text = source_path.read_text(encoding='utf-8')
@@ -380,30 +377,33 @@ def parse(source_path: Path) -> Dashboard:
     key_column: str | None = options.get('key_column')
     column_types_override: dict[str, str] = dict(options.get('column_types') or {})
 
-    tables_raw, preamble_text, after_text = _extract_all_tables(post.content)
-    if not tables_raw:
+    ordered_items, preamble_text = _extract_all_tables(post.content)
+    if not any(it[0] == 'table' for it in ordered_items):
         raise ValueError(f'{source_path}: dashboard requires a primary markdown table')
 
+    blocks: list = []
     table_blocks: list[TableBlock] = []
-    for heading, notes_md, table_lines in tables_raw:
-        headers, data_rows = _parse_table_rows(table_lines)
-        if not headers:
-            continue
-        columns = []
-        for i, name in enumerate(headers):
-            if name in column_types_override:
-                col_type = str(column_types_override[name])
-            else:
-                col_values = [row[i] if i < len(row) else '' for row in data_rows]
-                col_type = _detect_column_type(col_values)
-            is_key = (name == key_column) if key_column else (i == 0)
-            columns.append(Column(name=name, detected_type=col_type, is_key=is_key))
-        table_blocks.append(TableBlock(
-            heading=heading,
-            notes_md=notes_md,
-            columns=columns,
-            rows=data_rows,
-        ))
+    for item in ordered_items:
+        if item[0] == 'prose':
+            _, heading, body_md = item
+            blocks.append(ProseBlock(heading=heading, body_md=body_md))
+        else:
+            _, heading, notes_md, table_lines = item
+            headers, data_rows = _parse_table_rows(table_lines)
+            if not headers:
+                continue
+            columns = []
+            for i, name in enumerate(headers):
+                if name in column_types_override:
+                    col_type = str(column_types_override[name])
+                else:
+                    col_values = [row[i] if i < len(row) else '' for row in data_rows]
+                    col_type = _detect_column_type(col_values)
+                is_key = (name == key_column) if key_column else (i == 0)
+                columns.append(Column(name=name, detected_type=col_type, is_key=is_key))
+            tb = TableBlock(heading=heading, notes_md=notes_md, columns=columns, rows=data_rows)
+            blocks.append(tb)
+            table_blocks.append(tb)
 
     if not table_blocks:
         raise ValueError(f'{source_path}: dashboard requires a primary markdown table')
@@ -413,8 +413,8 @@ def parse(source_path: Path) -> Dashboard:
         subtitle=subtitle,
         source_path=source_path,
         tables=table_blocks,
+        blocks=blocks,
         preamble_md=preamble_text,
-        post_table_sections=_extract_post_sections(after_text) if after_text else [],
     )
 
 
@@ -438,8 +438,15 @@ def _render_html(db: Dashboard) -> str:
         if db.preamble_md else ''
     )
     meta_detail = f'{n_tables} tables &middot; {total_rows} rows' if n_tables > 1 else f'{total_rows} rows'
-    tables_html = '\n'.join(_render_table_section(t, idx) for idx, t in enumerate(db.tables))
-    sections_html = ''.join(_render_section(s) for s in db.post_table_sections)
+    table_idx = 0
+    block_parts = []
+    for block in db.blocks:
+        if isinstance(block, TableBlock):
+            block_parts.append(_render_table_section(block, table_idx))
+            table_idx += 1
+        else:
+            block_parts.append(_render_prose_section(block))
+    tables_html = '\n'.join(block_parts)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -460,7 +467,7 @@ def _render_html(db: Dashboard) -> str:
       <span class="match-count">{total_rows} rows</span>
     </div>
 {tables_html}
-{sections_html}    <footer>generated by cowork-render dashboard v1 &middot; {render_date}</footer>
+    <footer>generated by cowork-render dashboard v1 &middot; {render_date}</footer>
   </div>
   <script>{_JS}</script>
 </body>
@@ -469,7 +476,7 @@ def _render_html(db: Dashboard) -> str:
 
 def _render_table_section(table: TableBlock, idx: int) -> str:
     heading_html = (
-        f'      <h2 class="section-heading">{html.escape(table.heading)}</h2>\n'
+        f'      <h2 class="section-heading">{_apply_inline(html.escape(table.heading))}</h2>\n'
         if table.heading else ''
     )
     notes_html = (
@@ -489,6 +496,20 @@ def _render_table_section(table: TableBlock, idx: int) -> str:
         f'          <tbody>\n{tbody_html}\n          </tbody>\n'
         f'        </table>\n'
         f'      </div>\n'
+        f'    </section>'
+    )
+
+
+def _render_prose_section(block: ProseBlock) -> str:
+    heading_html = (
+        f'      <h2 class="section-heading">{_apply_inline(html.escape(block.heading))}</h2>\n'
+        if block.heading else ''
+    )
+    body_html = render_inline_markdown(block.body_md)
+    return (
+        f'    <section class="table-section">\n'
+        f'{heading_html}'
+        f'      <div class="section-notes">{body_html}</div>\n'
         f'    </section>'
     )
 
@@ -521,16 +542,7 @@ def _render_cell(col: Column, value: str) -> str:
     if cls.startswith('cell-bool-') or cls.startswith('cell-status-'):
         content = f'<span class="pill">{value_esc}</span>'
     else:
-        content = _inline_only(value_esc)
+        content = _apply_inline(value_esc)
     return f'            <td class="{cls}" data-cell="{name_esc}">{content}</td>\n'
 
 
-def _render_section(section: Section) -> str:
-    heading_esc = html.escape(section.heading)
-    body_html = render_inline_markdown(section.body_md) if section.body_md else ''
-    return (
-        f'    <details class="commentary-section" open>\n'
-        f'      <summary>{heading_esc}</summary>\n'
-        f'      <div class="commentary-body">{body_html}</div>\n'
-        f'    </details>\n'
-    )

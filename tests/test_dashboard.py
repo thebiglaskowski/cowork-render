@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from cowork_render.renderers import dashboard
+from cowork_render.renderers.dashboard import ProseBlock, TableBlock
 
 FIXTURE_MD = """\
 ---
@@ -17,6 +18,32 @@ render-html-options:
 | Alpha | ✓ | 2026-01-01 | active |
 | Beta | ✗ | 2025-06-01 | done |
 | Gamma | ✓ | 2024-12-01 | blocked |
+
+"""
+
+MIXED_BLOCKS_MD = """\
+---
+render-html: dashboard
+---
+
+## Section A
+
+| Name | Count |
+|------|-------|
+| Foo | 1 |
+
+## Prose Only
+
+This section has no table.
+
+- **item-one** — description
+- **item-two** — description
+
+## Section B
+
+| Item | Status |
+|------|--------|
+| X | active |
 
 """
 
@@ -186,6 +213,28 @@ def test_render_multi_table(tmp_path):
     assert "Section B" in result
     assert "Foo" in result
     assert "active" in result
+
+
+def test_parse_prose_section(tmp_path):
+    path = _write(tmp_path, MIXED_BLOCKS_MD)
+    db = dashboard.parse(path)
+    assert len(db.tables) == 2
+    assert len(db.blocks) == 3
+    assert isinstance(db.blocks[0], TableBlock)
+    assert isinstance(db.blocks[1], ProseBlock)
+    assert isinstance(db.blocks[2], TableBlock)
+    assert db.blocks[1].heading == "Prose Only"
+    assert "item-one" in db.blocks[1].body_md
+
+
+def test_render_prose_section(tmp_path):
+    path = _write(tmp_path, MIXED_BLOCKS_MD)
+    result = dashboard.render(path)
+    assert result.count('class="dashboard"') == 2
+    assert "Prose Only" in result
+    assert '<ul>' in result
+    assert '<li>' in result
+    assert "item-one" in result
 
 
 def test_render_inline_markdown_in_cells(tmp_path):
