@@ -14,7 +14,7 @@ colors:
 
   # Text — cool cream
   text-base: "#e6edf3"          # GitHub's primary text
-  text-heading: "#f0f6fc"       # slightly brighter for headings
+  text-heading: "#ffffff"        # pure white for headings
   text-muted: "#8b949e"         # GitHub's muted gray — passes WCAG AA on bg-base
   text-strong: "#c9d1d9"        # subsection headings, intermediate emphasis
   text-code: "#A6E22E"          # keep Monokai green for inline code — pops vividly against cool base
