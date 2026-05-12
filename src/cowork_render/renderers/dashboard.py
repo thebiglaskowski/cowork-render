@@ -415,6 +415,11 @@ def parse(source_path: Path) -> Dashboard:
                 sub_notes, sub_table_lines = _table_from_lines_standalone(sub_lines)
                 sub_headers, sub_rows = _parse_table_rows(sub_table_lines)
                 if not sub_headers:
+                    if sub_notes:
+                        subsections.append(SubsectionBlock(
+                            heading=h4_heading, notes_md=sub_notes,
+                            columns=[], rows=[],
+                        ))
                     continue
                 sub_cols = _build_columns(sub_headers, sub_rows)
                 subsections.append(SubsectionBlock(
@@ -516,6 +521,13 @@ def _render_subsection(sub: SubsectionBlock, idx: int) -> str:
         f'      <div class="subsection-notes">{render_block(sub.notes_md)}</div>\n'
         if sub.notes_md else ''
     )
+    if not sub.columns:
+        return (
+            f'      <div class="subsection">\n'
+            f'{heading_html}'
+            f'{notes_html}'
+            f'      </div>'
+        )
     thead = _render_thead(sub.columns)
     tbody_html = _render_tbody(sub.columns, sub.rows)
     return (
